@@ -2,6 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import db from './data/db.js'
 import User from './models/user.js'
+import userRoute from './routes/userRoute.js'
 
 // chamando o express
 const app = express()
@@ -10,6 +11,9 @@ const app = express()
 // middlewares
 app.use(cors())
 app.use(express.json())
+
+// rotas
+app.use('/user', userRoute)
 
 // ativando servidor
 const port = 3000
