@@ -1,4 +1,5 @@
 import showHouse from "../models/showHouse.js";
+import { Op } from "sequelize";
 import { validateEmail } from "../helpers/validateEmail.js";
 import { validateCEP } from "../helpers/validateCEP.js";
 
@@ -187,5 +188,38 @@ export async function deleteHouse(req,res){
     } catch (error) {
         console.log("Erro na rota de delete de casa de show => " , error)
         return res.status(500).json({msg: "Erro na rota de delete de casa de show => ", error})
+    }
+}
+
+export async function getHouse(req,res){
+    const name = req.params.name 
+
+    const resultHouses = await showHouse.findAll({
+        where: {
+            name: {
+                [Op.like]: `%${name}%`
+            }
+        }
+    })
+
+    if(!resultHouses){
+        return res.status(400).json({msg: "Nenhuma casa de show encontrada."})
+    }
+
+    return res.status(200).json(resultHouses)
+}
+
+export async function getHouseAll(req,res){
+    try {
+        const houses = await showHouse.findAll()
+
+        if(!houses){
+            return res.status(400).json({msg: "Nenhuma casa de show cadastrada"})
+        }
+    
+        return res.status(400).json(houses)   
+    } catch (error) {
+        console.log("Erro na rota de get de todos casas de show => " , error)
+        return res.status(500).json({msg: "Erro na rota de get de todos casas de show => ", error})
     }
 }
