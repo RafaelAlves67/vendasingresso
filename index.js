@@ -2,6 +2,9 @@ import express from 'express'
 import cors from 'cors'
 import db from './data/db.js'
 import User from './models/user.js'
+import showHouse from './models/showHouse.js'
+import Event from './models/event.js'
+import Ticket from './models/ticket.js'
 import userRoute from './routes/userRoute.js'
 
 // chamando o express
@@ -14,6 +17,8 @@ app.use(express.json())
 
 // rotas
 app.use('/user', userRoute)
+//pp.use('/event', eventRoute)
+//app.use('/house', houseRoute)
 
 // ativando servidor
 const port = 3000

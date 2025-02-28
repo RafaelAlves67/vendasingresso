@@ -29,6 +29,12 @@ export async function registerUser(req, res){
     if(emailVerify){
         return res.status(409).json({msg: "E-mail já existe!"})
     }
+
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if(!emailRegex.test(email)){
+        return res.status(400).json({msg: "Insira um e-mail válido"})
+    }
+    
     // senhas
     if(!password){
         return res.status(400).json({msg: "Insira uma senha para completar o registro!"})
