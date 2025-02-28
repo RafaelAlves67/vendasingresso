@@ -80,12 +80,12 @@ export async function registerHouse(req,res){
 
 export async function editHouse(req,res){
     try {
-        const {id,name, capacity, address, city, state, zip_code, phone, email, website, photos } = req.body 
+        const {house_id,name, capacity, address, city, state, zip_code, phone, email, website, photos } = req.body 
 
     // validações
-    const houseEdited = {id,name, capacity, address, city, state, zip_code, phone, email, website, photos}
+    const houseEdited = {house_id, name, capacity, address, city, state, zip_code, phone, email, website, photos}
     // verificar se id está correto
-    const houseVerify = await showHouse.findByPk(id)
+    const houseVerify = await showHouse.findByPk(house_id)
     if(!houseVerify){
         return res.status(400).json({msg: "Id house inválido!"})
     }
@@ -132,24 +132,60 @@ export async function editHouse(req,res){
         return res.status(400).json({msg: "Insira um número de celular válido!"})
     }
 
-    // VERIFICAR SE HOUVE MUDANÇAS
     const hasChanges = Object.keys(houseEdited).some(key => {
-        if (key === 'photos') {
-            return JSON.stringify(houseVerify[key]) !== JSON.stringify(houseEdited[key]);
+        const oldValue = houseVerify[key];  
+        let newValue = houseEdited[key];
+    
+        // Se for `photos`, converte JSON para comparar corretamente
+        if (key === "photos" && typeof oldValue === "string") {
+            try {
+                newValue = JSON.stringify(newValue); 
+            } catch (error) {
+                return false;
+            }
         }
-        return houseVerify[key] !== houseEdited[key]
-    })
+    
+        // Considerar remoção do campo como alteração
+        return newValue !== undefined && String(oldValue) !== String(newValue);
+    });
+    
 
     if(!hasChanges){
         return res.status(400).json({msg: "Não houve mudanças, altere algo!"})
    }
 
-   const houseUpdate = await showHouse.update(houseEdited, {where: {id: id}})
-   return res.status(200).json({msg: "Casa de show editada!", houseUpdate})
+   if(zip_code){
+    const cepVerify = await showHouse.findOne({where: {zip_code: zip_code}})
+    if(cepVerify){
+        return res.status(409).json({msg: "CEP já cadastrado!"})
+    }
+}
+
+   
+   await showHouse.update({name: name, email: email, phone: phone, capacity: capacity, photos: photos, address: address, city: city, state: state, zip_code: zip_code}, {where: {house_id: house_id}})
+   return res.status(200).json({msg: "Casa de show editada!", houseEdited})
      
     } catch (error) {
-        console.log("Erro na rota de cadastro de casa de show => " , error)
+        console.log("Erro na rota de edit de casa de show => " , error)
         return res.status(500).json({msg: "Erro na rota de edit de casa de show => ", error})
 
+    }
+}
+
+export async function deleteHouse(req,res){
+    try {
+        const house_id = req.params.id 
+
+        // validação
+        const houseVerify = await showHouse.findByPk(house_id)
+        if(!houseVerify){
+            return res.status(400).json({msg: "Id inválido"})
+        }
+        
+        await showHouse.destroy({where: {house_id: house_id}})
+        return res.status(200).json({msg: "Casa de show excluida!"})   
+    } catch (error) {
+        console.log("Erro na rota de delete de casa de show => " , error)
+        return res.status(500).json({msg: "Erro na rota de delete de casa de show => ", error})
     }
 }

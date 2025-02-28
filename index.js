@@ -6,6 +6,7 @@ import showHouse from './models/showHouse.js'
 import Event from './models/event.js'
 import Ticket from './models/ticket.js'
 import userRoute from './routes/userRoute.js'
+import houseRoute from './routes/houseRoute.js'
 
 // chamando o express
 const app = express()
@@ -17,7 +18,7 @@ app.use(express.json())
 
 // rotas
 app.use('/user', userRoute)
-//pp.use('/event', eventRoute)
+app.use('/house', houseRoute)
 //app.use('/house', houseRoute)
 
 // ativando servidor
