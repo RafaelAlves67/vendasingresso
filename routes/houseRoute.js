@@ -1,6 +1,6 @@
 import express from 'express'
 import { authToken } from '../helpers/authToken.js'
-import {deleteHouse, editHouse, getHouse, getHouseAll, registerHouse } from '../controllers/houseController.js'
+import {deleteHouse, editHouse, getSearchHouse, getHouseAll, registerHouse } from '../controllers/houseController.js'
 
 // chamando a rota
 const houseRoute = express.Router()
@@ -10,7 +10,7 @@ houseRoute.post('/register', authToken, registerHouse)
 houseRoute.put('/edit', authToken, editHouse)
 houseRoute.delete('/delete/:id', authToken, deleteHouse)
 houseRoute.get('/', authToken, getHouseAll)
-houseRoute.get('/:name', authToken, getHouse)
+houseRoute.get('/:name', authToken, getSearchHouse)
 
 
 export default houseRoute

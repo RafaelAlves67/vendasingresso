@@ -1,60 +1,58 @@
 import { DataTypes } from "sequelize";
 import db from "../data/db.js";
-import showHouse from "./showHouse.js";
+import ShowHouse from "./showHouse.js";
 
-const Event = db.define("Evento", {
+const Event = db.define("Event", {
+  id: {
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
+  },
   name: {
     type: DataTypes.STRING,
-    allowNull: false,
+    allowNull: false
   },
   description: {
     type: DataTypes.TEXT,
-    allowNull: true,
+    allowNull: true
   },
-  date: {
+  startTime: {
     type: DataTypes.DATE,
-    allowNull: false,
+    allowNull: false
+  },
+  endTime:{
+    type: DataTypes.DATE,
+    allowNull: false
   },
   house_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: "casas_de_show",
-      key: "house_id",
+      model: ShowHouse,
+      key: "house_id"
     },
     onUpdate: "CASCADE",
-    onDelete: "CASCADE",
-  },
-  ticket_price: {
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: false,
-  },
-  ticket_lots: {
-    type: DataTypes.JSON,
-    allowNull: true,
-  },
-  max_tickets_per_person: {
-    type: DataTypes.INTEGER,
-    defaultValue: 5,
+    onDelete: "CASCADE"
   },
   is_sold_out: {
     type: DataTypes.BOOLEAN,
-    defaultValue: false,
+    defaultValue: false
   },
   status: {
     type: DataTypes.ENUM("Disponível", "Esgotado", "Cancelado", "Expirado"),
-    defaultValue: "Disponível",
+    defaultValue: "Disponível"
   },
-
   photos: {
     type: DataTypes.JSON,
-    allowNull: true
+    allowNull: true // Armazena URLs das fotos do evento
   }
 }, {
-  tableName: "eventos",
-  timestamps: true,
+  tableName: "events",
+  timestamps: true
 });
 
-Event.belongsTo(showHouse, { foreignKey: "house_id", as: "casaDeShow" });
+// Relacionamento com Casa de Show
+Event.belongsTo(ShowHouse, { foreignKey: "house_id", as: "casaDeShow" });
+
 
 export default Event;

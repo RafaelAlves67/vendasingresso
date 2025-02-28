@@ -191,7 +191,7 @@ export async function deleteHouse(req,res){
     }
 }
 
-export async function getHouse(req,res){
+export async function getSearchHouse(req,res){
     const name = req.params.name 
 
     const resultHouses = await showHouse.findAll({
