@@ -35,11 +35,11 @@ const TicketLot = db.define("TicketLot", {
     defaultValue: 0 // Número de ingressos vendidos
   },
   start_date: {
-    type: DataTypes.DATE,
+    type: DataTypes.DATEONLY,
     allowNull: false // Quando este lote começa a ser vendido
   },
   end_date: {
-    type: DataTypes.DATE,
+    type: DataTypes.DATEONLY,
     allowNull: false // Quando este lote para de ser vendido
   },
   status: {

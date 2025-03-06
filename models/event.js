@@ -16,12 +16,16 @@ const Event = db.define("Event", {
     type: DataTypes.TEXT,
     allowNull: true
   },
+  date: {
+    type: DataTypes.DATEONLY,  // Apenas a data (YYYY-MM-DD)
+    allowNull: false
+  },
   startTime: {
-    type: DataTypes.DATE,
+    type: DataTypes.TIME,  // Apenas a hora (HH:MM:SS)
     allowNull: false
   },
   endTime:{
-    type: DataTypes.DATE,
+    type: DataTypes.TIME,  // Apenas a hora (HH:MM:SS)
     allowNull: false
   },
   house_id: {
