@@ -95,7 +95,7 @@ export async function registerUser(req, res){
     return res.status(200).json({msg: "Usuário registrado!", newUser})
 
     } catch (error) {
-        console.log("Erro na rota de cadastro de usuário => ", error)
+        console.log("Erro na rota de cadastro de usuário ==> ", error)
         return res.status(500).json({msg: "Erro na rota de cadastro de usuário => ", error})
     }
 }
