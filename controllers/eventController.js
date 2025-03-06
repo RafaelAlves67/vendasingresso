@@ -1,11 +1,12 @@
 import Event from "../models/event.js";
 import showHouse from "../models/showHouse.js";
 import { Op } from "sequelize";
+import Ticket from "../models/ticket.js";
 
 export async function registerEvent(req, res) {
 
     try {
-        const { name, description, startTime, endTime, date, house_id, photos } = req.body
+        const { name, description, startTime, endTime, date, house_id, photos, ctrlLote, qtde_ticket } = req.body
         // validações 
         if (!name) {
             return res.status(400).json({ msg: "Insira o nome do evento!" })
@@ -31,10 +32,19 @@ export async function registerEvent(req, res) {
             return res.status(400).json({ msg: "Insira o horario final do evento!" })
         }
 
+        if(!qtde_ticket || qtde_ticket <= 0){
+            return res.status(400).json({ msg: "Insira a quantidade de ingressos a ser vendida no evento!" })
+        }
+
         // validar se existe essa casa de show
         const houseVerify = await showHouse.findByPk(house_id)
         if (!houseVerify) {
             return res.status(400).json({ msg: "Casa de show não encontrada!" })
+        }
+
+        // validar capacidade maxima da casa de show
+        if(qtde_ticket > houseVerify.capacity){
+            return res.status(403).json({msg: "Capacidade de casa de show não suporta o número de ingressos total."})
         }
 
         // Conversão dos valores da requisição
@@ -62,12 +72,12 @@ export async function registerEvent(req, res) {
             }
         });
 
-        // chamando a casa de show
-        const house = await showHouse.findByPk(house_id)
+        
 
         if (eventByDataAndHouse) {
-            return res.status(409).json({ msg: `Ja existe um evento marcado nesse dia ${date} na casa ${house.name} nos horarios entre ${startTime}-${endTime}` })
+            return res.status(409).json({ msg: `Ja existe um evento marcado nesse dia ${date} na casa ${houseVerify.name} nos horarios entre ${startTime}-${endTime}` })
         }
+
         // criando o evento
         const newEvent = await Event.create({
             name: name,
@@ -76,14 +86,23 @@ export async function registerEvent(req, res) {
             house_id: house_id,
             photos: photos,
             startTime: startTime,
-            endTime: endTime
+            endTime: endTime,
+            qtde_ticket: qtde_ticket
         })
+
+        if(!ctrlLote){
+            let tickets = [];
+            for (let i = 0; i < qtde_ticket; i++) {
+                tickets.push({ event_id: newEvent.id, status: "Disponível" });
+            }
+            await Ticket.bulkCreate(tickets);
+        }
 
         return res.status(200).json({ msg: "Evento cadastrado!", newEvent })
 
     } catch (error) {
         console.log("Erro com a rota de cadastro de evento => ", error)
-        return res.status(500).json({ msg: "Erro com a rota de cadastro de evento => ", error })
+        return res.status(500).json.stringify(error)
     }
 }
 

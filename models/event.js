@@ -49,6 +49,18 @@ const Event = db.define("Event", {
   photos: {
     type: DataTypes.JSON,
     allowNull: true // Armazena URLs das fotos do evento
+  },
+  qtde_ticket: {
+    type: DataTypes.INTEGER,
+    allowNull: false
+  },
+  available_tickets: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
+  CtrlLote: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false
   }
 }, {
   tableName: "events",
