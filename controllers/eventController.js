@@ -1,12 +1,13 @@
 import Event from "../models/event.js";
 import showHouse from "../models/showHouse.js";
 import { Op } from "sequelize";
-import Ticket from "../models/ticket.js";
+import Ticket from "../models/Ingresso.js";
 
 export async function registerEvent(req, res) {
 
     try {
-        const { name, description, startTime, endTime, date, house_id, photos, ctrlLote, qtde_ticket } = req.body
+        const { name, description, startTime, endTime, dateStart, dateEnd, category, subject, house_id, photos} = req.body
+        
         // validações 
         if (!name) {
             return res.status(400).json({ msg: "Insira o nome do evento!" })
@@ -16,64 +17,91 @@ export async function registerEvent(req, res) {
             return res.status(400).json({ msg: "Insira a descrição do evento!" })
         }
 
+        if (!subject) {
+            return res.status(400).json({ msg: "Informe o assunto do evento!" })
+        }
+
         if (!house_id) {
             return res.status(400).json({ msg: "Insira a casa de show do evento!" })
         }
 
-        if (!date) {
-            return res.status(400).json({ msg: "Insira o dia do evento!" })
+        if (!dateStart) {
+            return res.status(400).json({ msg: "Insira o dia inicial do evento!" })
         }
 
         if (!startTime) {
             return res.status(400).json({ msg: "Insira o horario inicial do evento!" })
         }
 
+        if (!dateEnd) {
+            return res.status(400).json({ msg: "Insira o dia final do evento!" })
+        }
+
+
         if (!endTime) {
             return res.status(400).json({ msg: "Insira o horario final do evento!" })
         }
 
-        if(!qtde_ticket || qtde_ticket <= 0){
-            return res.status(400).json({ msg: "Insira a quantidade de ingressos a ser vendida no evento!" })
-        }
-
-        // validar se existe essa casa de show
-        const houseVerify = await showHouse.findByPk(house_id)
-        if (!houseVerify) {
-            return res.status(400).json({ msg: "Casa de show não encontrada!" })
-        }
-
-        // validar capacidade maxima da casa de show
-        if(qtde_ticket > houseVerify.capacity){
-            return res.status(403).json({msg: "Capacidade de casa de show não suporta o número de ingressos total."})
-        }
-
         // Conversão dos valores da requisição
-        const dateEvento = new Date(date); // Converte a data para Date
+        const dateEventoStart = new Date(dateStart); // Converte a data para Date
+        const dateEventoEnd = new Date(dateEnd); // Converte a data para Date
         const dateNow = new Date();
 
         // validação da data do evento
-        if (dateEvento.setHours(0, 0, 0, 0) < dateNow.setHours(0, 0, 0, 0)) {
+        if (dateEventoStart.setHours(0, 0, 0, 0) < dateNow.setHours(0, 0, 0, 0 ) || dateEventoEnd.setHours(0, 0, 0, 0) < dateNow.setHours(0, 0, 0, 0 )) {
             return res.status(400).json({ msg: "Insira uma data válida para seu evento!" });
+        }
+
+        if(dateEnd < dateStart){
+            return res.status(400).json({ msg: "A data final não pode ser antes da data inicial!" });
         }
 
         // Validação de horário e conflito de eventos
         const eventByDataAndHouse = await Event.findOne({
             where: {
                 house_id: house_id,
-                date: date,
                 [Op.or]: [
-                    { startTime: { [Op.between]: [startTime, endTime] } },
-                    { endTime: { [Op.between]: [startTime, endTime] } },
                     {
-                        startTime: { [Op.lte]: startTime },
+                        // Caso 1: O evento existente começa dentro do intervalo do novo evento
+                        dateStart: { [Op.between]: [dateStart, dateEnd] }
+                    },
+                    {
+                        // Caso 2: O evento existente termina dentro do intervalo do novo evento
+                        dateEnd: { [Op.between]: [dateStart, dateEnd] }
+                    },
+                    {
+                        // Caso 3: O evento existente envolve completamente o novo evento
+                        dateStart: { [Op.lte]: dateStart },
+                        dateEnd: { [Op.gte]: dateEnd }
+                    },
+                    {
+                        // Caso 4: Evento existente atravessa a meia-noite
+                        dateStart: { [Op.lte]: dateEnd },
+                        dateEnd: { [Op.gte]: dateStart }
+                    }
+                ],
+                [Op.or]: [
+                    // Eventos que começam e terminam no mesmo dia
+                    { 
+                        startTime: { [Op.between]: [startTime, endTime] } 
+                    },
+                    { 
+                        endTime: { [Op.between]: [startTime, endTime] } 
+                    },
+                    { 
+                        startTime: { [Op.lte]: startTime }, 
                         endTime: { [Op.gte]: endTime }
+                    },
+                    // Eventos que atravessam a meia-noite
+                    {
+                        startTime: { [Op.gte]: startTime }, // Começa antes da meia-noite
+                        endTime: { [Op.lte]: endTime }, // Termina depois da meia-noite
+                        dateStart: { [Op.lt]: dateEnd } // Atravessa para o dia seguinte
                     }
                 ]
             }
         });
-
         
-
         if (eventByDataAndHouse) {
             return res.status(409).json({ msg: `Ja existe um evento marcado nesse dia ${date} na casa ${houseVerify.name} nos horarios entre ${startTime}-${endTime}` })
         }
@@ -82,27 +110,21 @@ export async function registerEvent(req, res) {
         const newEvent = await Event.create({
             name: name,
             description: description,
-            date: date,
+            dateStart: dateStart,
+            dateEnd: dateEnd,
             house_id: house_id,
             photos: photos,
             startTime: startTime,
             endTime: endTime,
-            qtde_ticket: qtde_ticket
+            subject: subject,
+            category: category
         })
-
-        if(!ctrlLote){
-            let tickets = [];
-            for (let i = 0; i < qtde_ticket; i++) {
-                tickets.push({ event_id: newEvent.id, status: "Disponível" });
-            }
-            await Ticket.bulkCreate(tickets);
-        }
 
         return res.status(200).json({ msg: "Evento cadastrado!", newEvent })
 
     } catch (error) {
         console.log("Erro com a rota de cadastro de evento => ", error)
-        return res.status(500).json.stringify(error)
+        return res.status(500).json(error)
     }
 }
 
@@ -187,9 +209,9 @@ export async function deleteEvent(req, res) {
 export async function editEvent(req, res) {
     try {
 
-        const { id, name, description, startTime, endTime, date, house_id, photos } = req.body
-        const eventEdited = { name, description, startTime, endTime, date, house_id, photos }
-
+        const { evento_id, name, description, startTime, endTime, date, house_id, photos, subject, category, dateStart, dateEnd  } = req.body
+        const eventEdited = { evento_id, name, description, startTime, endTime, date, house_id, photos, subject, category, dateStart, dateEnd  }
+    
         // validações 
         if (!name) {
             return res.status(400).json({ msg: "Insira o nome do evento!" })
@@ -211,24 +233,33 @@ export async function editEvent(req, res) {
             return res.status(400).json({ msg: "Insira o dia do evento!" })
         }
 
+        if (!dateStart) {
+            return res.status(400).json({ msg: "Insira o dia inicial do evento!" })
+        }
+
+
         if (!startTime) {
             return res.status(400).json({ msg: "Insira o horario inicial do evento!" })
         }
+
+        if (!dateEnd) {
+            return res.status(400).json({ msg: "Insira o dia final do evento!" })
+        }
+
 
         if (!endTime) {
             return res.status(400).json({ msg: "Insira o horario final do evento!" })
         }
 
-        // validar se existe essa casa de show
-        const houseVerify = await showHouse.findByPk(house_id)
-        if (!houseVerify) {
-            return res.status(400).json({ msg: "Casa de show não encontrada!" })
+        if (!subject) {
+            return res.status(400).json({ msg: "Informe o assunto do evento!" })
         }
-
-        const eventVerify = await Event.findByPk(id)
+        
+        const eventVerify = await Event.findByPk(evento_id)
         if (!eventVerify) {
             return res.status(400).json({ msg: "Id de evento não encontrado!" })
         }
+
 
         const hasChanges = Object.keys(eventEdited).some(key => {
             const oldValue = eventVerify[key];
@@ -243,6 +274,7 @@ export async function editEvent(req, res) {
                 }
             }
 
+
             // Considerar remoção do campo como alteração
             return newValue !== undefined && String(oldValue) !== String(newValue);
         });
@@ -253,38 +285,70 @@ export async function editEvent(req, res) {
         }
 
         // Conversão dos valores da requisição
-        const dateEvento = new Date(date); // Converte o dia para Date
+        const dateEventoStart = new Date(dateStart); // Converte a data para Date
+        const dateEventoEnd = new Date(dateEnd); // Converte a data para Date
         const dateNow = new Date();
 
         // validação da data do evento
-        if (dateEvento.setHours(0, 0, 0, 0) < dateNow.setHours(0, 0, 0, 0)) {
+        if (dateEventoStart.setHours(0, 0, 0, 0) < dateNow.setHours(0, 0, 0, 0 ) || dateEventoEnd.setHours(0, 0, 0, 0) < dateNow.setHours(0, 0, 0, 0 )) {
             return res.status(400).json({ msg: "Insira uma data válida para seu evento!" });
+        }
+
+        if(dateEnd < dateStart){
+            return res.status(400).json({ msg: "A data final não pode ser antes da data inicial!" });
         }
 
         // Validação de horário e conflito de eventos
         const eventByDataAndHouse = await Event.findOne({
             where: {
                 house_id: house_id,
-                date: date,
                 [Op.or]: [
-                    { startTime: { [Op.between]: [startTime, endTime] } },
-                    { endTime: { [Op.between]: [startTime, endTime] } },
                     {
-                        startTime: { [Op.lte]: startTime },
+                        // Caso 1: O evento existente começa dentro do intervalo do novo evento
+                        dateStart: { [Op.between]: [dateStart, dateEnd] }
+                    },
+                    {
+                        // Caso 2: O evento existente termina dentro do intervalo do novo evento
+                        dateEnd: { [Op.between]: [dateStart, dateEnd] }
+                    },
+                    {
+                        // Caso 3: O evento existente envolve completamente o novo evento
+                        dateStart: { [Op.lte]: dateStart },
+                        dateEnd: { [Op.gte]: dateEnd }
+                    },
+                    {
+                        // Caso 4: Evento existente atravessa a meia-noite
+                        dateStart: { [Op.lte]: dateEnd },
+                        dateEnd: { [Op.gte]: dateStart }
+                    }
+                ],
+                [Op.or]: [
+                    // Eventos que começam e terminam no mesmo dia
+                    { 
+                        startTime: { [Op.between]: [startTime, endTime] } 
+                    },
+                    { 
+                        endTime: { [Op.between]: [startTime, endTime] } 
+                    },
+                    { 
+                        startTime: { [Op.lte]: startTime }, 
                         endTime: { [Op.gte]: endTime }
+                    },
+                    // Eventos que atravessam a meia-noite
+                    {
+                        startTime: { [Op.gte]: startTime }, // Começa antes da meia-noite
+                        endTime: { [Op.lte]: endTime }, // Termina depois da meia-noite
+                        dateStart: { [Op.lt]: dateEnd } // Atravessa para o dia seguinte
                     }
                 ]
             }
         });
-
-        // chamando a casa de show
-        const house = await showHouse.findByPk(house_id)
-
+        
         if (eventByDataAndHouse) {
-            return res.status(409).json({ msg: `Ja existe um evento marcado nesse dia ${date} na casa ${house.name} nos horarios entre ${startTime}-${endTime}` })
+            return res.status(409).json({ msg: `Ja existe um evento marcado nesse dia ${date} na casa ${houseVerify.name} nos horarios entre ${startTime}-${endTime}` })
         }
 
-        await Event.update({ id, name, description, startTime, endTime, date, house_id, photos }, { where: { id: id } })
+        await Event.update({ id, name, description, startTime, endTime, date, house_id, photos, ctrlLoteBool, qtde_ticket, default_price }, { where: { id: id } })
         return res.status(200).json({ msg: "Evento editado com sucesso!", eventEdited })
 
 

@@ -6,15 +6,11 @@ import { validateCEP } from "../helpers/validateCEP.js";
 export async function registerHouse(req,res){
 
     try {
-        const {name, capacity, address, city, state, zip_code, phone, email, website, photos } = req.body
+        const {name, address, city, state, zip_code, phone, email, website } = req.body
 
         // validações
         if(!name){
             return res.status(400).json({msg: "Insira o nome da casa!"})
-        }
-
-        if(!capacity){
-            return res.status(400).json({msg: "Insira a capacidade total da casa!"})
         }
 
         if(!address){
@@ -58,15 +54,13 @@ export async function registerHouse(req,res){
 
         const newShowHouse = await showHouse.create({
             name: name, 
-            capacity: capacity,
             address: address,
             city: city,
             state: state,
             zip_code: zip_code,
             phone: phone,
             email: email,
-            website: website,
-            photos: photos
+            website: website
         })
 
         return res.status(200).json({msg: "Casa de show cadastrada!", newShowHouse})
@@ -81,10 +75,10 @@ export async function registerHouse(req,res){
 
 export async function editHouse(req,res){
     try {
-        const {house_id,name, capacity, address, city, state, zip_code, phone, email, website, photos } = req.body 
+        const {house_id,name,  address, city, state, zip_code, phone, email, website} = req.body 
 
     // validações
-    const houseEdited = {house_id, name, capacity, address, city, state, zip_code, phone, email, website, photos}
+    const houseEdited = {house_id, name,  address, city, state, zip_code, phone, email, website}
     // verificar se id está correto
     const houseVerify = await showHouse.findByPk(house_id)
     if(!houseVerify){
@@ -96,10 +90,6 @@ export async function editHouse(req,res){
         return res.status(400).json({msg: "Campo nome não pode estar vazio!"})
     }
 
-    // capacidade
-    if(!capacity){
-        return res.status(400).json({msg: "Campo capacidade não pode estar vazio!"})
-    }
 
     // endereço
     if(!address){
@@ -136,16 +126,7 @@ export async function editHouse(req,res){
     const hasChanges = Object.keys(houseEdited).some(key => {
         const oldValue = houseVerify[key];  
         let newValue = houseEdited[key];
-    
-        // Se for `photos`, converte JSON para comparar corretamente
-        if (key === "photos" && typeof oldValue === "string") {
-            try {
-                newValue = JSON.stringify(newValue); 
-            } catch (error) {
-                return false;
-            }
-        }
-    
+         
         // Considerar remoção do campo como alteração
         return newValue !== undefined && String(oldValue) !== String(newValue);
     });
@@ -163,7 +144,7 @@ export async function editHouse(req,res){
 }
 
    
-   await showHouse.update({name: name, email: email, phone: phone, capacity: capacity, photos: photos, address: address, city: city, state: state, zip_code: zip_code}, {where: {house_id: house_id}})
+   await showHouse.update({name: name, email: email, phone: phone, address: address, city: city, state: state, zip_code: zip_code, website: website}, {where: {house_id: house_id}})
    return res.status(200).json({msg: "Casa de show editada!", houseEdited})
      
     } catch (error) {

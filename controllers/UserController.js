@@ -130,7 +130,7 @@ export async function loginUser(req, res){
     }
 
     // gerar token para autenticação de login
-    const token = jwt.sign(userVerify.id, SECRET)
+    const token = jwt.sign(userVerify.usuario_id, SECRET)
     return res.status(200).json({msg: "Usuário logado!", token})
 
     } catch (error) {

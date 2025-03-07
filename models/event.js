@@ -1,9 +1,11 @@
 import { DataTypes } from "sequelize";
 import db from "../data/db.js";
 import ShowHouse from "./showHouse.js";
+import producer from "./Produtor.js";
+import Ingresso from "./Ingresso.js";
 
 const Event = db.define("Event", {
-  id: {
+  evento_id: {
     type: DataTypes.INTEGER,
     autoIncrement: true,
     primaryKey: true
@@ -16,10 +18,24 @@ const Event = db.define("Event", {
     type: DataTypes.TEXT,
     allowNull: true
   },
-  date: {
+  subject: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  category: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  dateStart: {
     type: DataTypes.DATEONLY,  // Apenas a data (YYYY-MM-DD)
     allowNull: false
   },
+
+  dateEnd: {
+    type: DataTypes.DATEONLY,  // Apenas a data (YYYY-MM-DD)
+    allowNull: false
+  },
+
   startTime: {
     type: DataTypes.TIME,  // Apenas a hora (HH:MM:SS)
     allowNull: false
@@ -28,47 +44,32 @@ const Event = db.define("Event", {
     type: DataTypes.TIME,  // Apenas a hora (HH:MM:SS)
     allowNull: false
   },
-  house_id: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    references: {
-      model: ShowHouse,
-      key: "house_id"
-    },
-    onUpdate: "CASCADE",
-    onDelete: "CASCADE"
-  },
+
+  // A AVALIAR ESSE CAMPO
   is_sold_out: {
     type: DataTypes.BOOLEAN,
     defaultValue: false
   },
+
+  //
   status: {
     type: DataTypes.ENUM("Disponível", "Esgotado", "Cancelado", "Expirado"),
     defaultValue: "Disponível"
   },
+
   photos: {
     type: DataTypes.JSON,
     allowNull: true // Armazena URLs das fotos do evento
   },
-  qtde_ticket: {
-    type: DataTypes.INTEGER,
-    allowNull: false
-  },
-  available_tickets: {
-    type: DataTypes.INTEGER,
-    allowNull: true
-  },
-  CtrlLote: {
-    type: DataTypes.BOOLEAN,
-    allowNull: false
-  }
+  house_id: {
+    type: DataTypes.INTEGER, // Certifique-se de que este tipo é o correto
+    allowNull: false, // ou true dependendo do seu caso
+}
+ 
 }, {
   tableName: "events",
   timestamps: true
 });
-
-// Relacionamento com Casa de Show
-Event.belongsTo(ShowHouse, { foreignKey: "house_id", as: "casaDeShow" });
 
 
 export default Event;
