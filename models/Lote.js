@@ -1,6 +1,5 @@
 import { DataTypes } from "sequelize";
 import db from "../data/db.js";
-import Event from "./Event.js";
 import Ingresso from './Ingresso.js'
 
 const Lote = db.define('Lote', {

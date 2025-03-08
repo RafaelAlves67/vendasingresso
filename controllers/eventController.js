@@ -42,6 +42,11 @@ export async function registerEvent(req, res) {
             return res.status(400).json({ msg: "Insira o horario final do evento!" })
         }
 
+        const houseVerify = await showHouse.findByPk(house_id)
+        if(!houseVerify){
+            return res.status(400).json({msg: "Id de local nao encontrado!"})
+        }
+
         // Conversão dos valores da requisição
         const dateEventoStart = new Date(dateStart); // Converte a data para Date
         const dateEventoEnd = new Date(dateEnd); // Converte a data para Date
@@ -76,34 +81,19 @@ export async function registerEvent(req, res) {
                     },
                     {
                         // Caso 4: Evento existente atravessa a meia-noite
-                        dateStart: { [Op.lte]: dateEnd },
-                        dateEnd: { [Op.gte]: dateStart }
-                    }
-                ],
-                [Op.or]: [
-                    // Eventos que começam e terminam no mesmo dia
-                    { 
-                        startTime: { [Op.between]: [startTime, endTime] } 
-                    },
-                    { 
-                        endTime: { [Op.between]: [startTime, endTime] } 
-                    },
-                    { 
-                        startTime: { [Op.lte]: startTime }, 
-                        endTime: { [Op.gte]: endTime }
-                    },
-                    // Eventos que atravessam a meia-noite
-                    {
-                        startTime: { [Op.gte]: startTime }, // Começa antes da meia-noite
-                        endTime: { [Op.lte]: endTime }, // Termina depois da meia-noite
-                        dateStart: { [Op.lt]: dateEnd } // Atravessa para o dia seguinte
+                        [Op.and]: [
+                            { dateStart: { [Op.lte]: dateEnd } },
+                            { dateEnd: { [Op.gte]: dateStart } },
+                            { startTime: { [Op.gte]: endTime } }
+                        ]
                     }
                 ]
             }
         });
+    
         
         if (eventByDataAndHouse) {
-            return res.status(409).json({ msg: `Ja existe um evento marcado nesse dia ${date} na casa ${houseVerify.name} nos horarios entre ${startTime}-${endTime}` })
+            return res.status(409).json({ msg: `Data indisponível!` })
         }
 
         // criando o evento
@@ -209,8 +199,8 @@ export async function deleteEvent(req, res) {
 export async function editEvent(req, res) {
     try {
 
-        const { evento_id, name, description, startTime, endTime, date, house_id, photos, subject, category, dateStart, dateEnd  } = req.body
-        const eventEdited = { evento_id, name, description, startTime, endTime, date, house_id, photos, subject, category, dateStart, dateEnd  }
+        const { evento_id, name, description, startTime, endTime, house_id, photos, subject, category, dateStart, dateEnd  } = req.body
+        const eventEdited = { evento_id, name, description, startTime, endTime,  house_id, photos, subject, category, dateStart, dateEnd  }
     
         // validações 
         if (!name) {
@@ -221,16 +211,8 @@ export async function editEvent(req, res) {
             return res.status(400).json({ msg: "Insira a descrição do evento!" })
         }
 
-        if (!date) {
-            return res.status(400).json({ msg: "Insira a data do evento!" })
-        }
-
         if (!house_id) {
             return res.status(400).json({ msg: "Insira a casa de show do evento!" })
-        }
-
-        if (!date) {
-            return res.status(400).json({ msg: "Insira o dia do evento!" })
         }
 
         if (!dateStart) {
@@ -265,16 +247,7 @@ export async function editEvent(req, res) {
             const oldValue = eventVerify[key];
             let newValue = eventEdited[key];
 
-            // Se for `photos`, converte JSON para comparar corretamente
-            if (key === "photos" && typeof oldValue === "string") {
-                try {
-                    newValue = JSON.stringify(newValue);
-                } catch (error) {
-                    return false;
-                }
-            }
-
-
+            
             // Considerar remoção do campo como alteração
             return newValue !== undefined && String(oldValue) !== String(newValue);
         });
@@ -283,6 +256,12 @@ export async function editEvent(req, res) {
         if (!hasChanges) {
             return res.status(400).json({ msg: "Não houve mudanças no evento, altere algo!" })
         }
+
+        const houseVerify = await showHouse.findByPk(house_id)
+        if(!houseVerify){
+            return res.status(400).json({msg: "Id de local nao encontrado!"})
+        }
+
 
         // Conversão dos valores da requisição
         const dateEventoStart = new Date(dateStart); // Converte a data para Date
@@ -317,38 +296,22 @@ export async function editEvent(req, res) {
                         dateEnd: { [Op.gte]: dateEnd }
                     },
                     {
-                        // Caso 4: Evento existente atravessa a meia-noite
-                        dateStart: { [Op.lte]: dateEnd },
-                        dateEnd: { [Op.gte]: dateStart }
-                    }
-                ],
-                [Op.or]: [
-                    // Eventos que começam e terminam no mesmo dia
-                    { 
-                        startTime: { [Op.between]: [startTime, endTime] } 
-                    },
-                    { 
-                        endTime: { [Op.between]: [startTime, endTime] } 
-                    },
-                    { 
-                        startTime: { [Op.lte]: startTime }, 
-                        endTime: { [Op.gte]: endTime }
-                    },
-                    // Eventos que atravessam a meia-noite
-                    {
-                        startTime: { [Op.gte]: startTime }, // Começa antes da meia-noite
-                        endTime: { [Op.lte]: endTime }, // Termina depois da meia-noite
-                        dateStart: { [Op.lt]: dateEnd } // Atravessa para o dia seguinte
-                    }
-                ]
-            }
-        });
+                       // Caso 4: Evento existente atravessa a meia-noite
+                       [Op.and]: [
+                        { dateStart: { [Op.lte]: dateEnd } },
+                        { dateEnd: { [Op.gte]: dateStart } },
+                        { startTime: { [Op.gte]: endTime } }
+                    ]
+                }
+            ]
+        }
+    });
         
         if (eventByDataAndHouse) {
-            return res.status(409).json({ msg: `Ja existe um evento marcado nesse dia ${date} na casa ${houseVerify.name} nos horarios entre ${startTime}-${endTime}` })
+            return res.status(409).json({ msg: `Data Indiponivél!` })
         }
 
-        await Event.update({ id, name, description, startTime, endTime, date, house_id, photos, ctrlLoteBool, qtde_ticket, default_price }, { where: { id: id } })
+        await Event.update({ name, description, startTime, endTime, house_id, photos, subject, category, dateStart, dateEnd   }, { where: { evento_id: evento_id } })
         return res.status(200).json({ msg: "Evento editado com sucesso!", eventEdited })
 
 
