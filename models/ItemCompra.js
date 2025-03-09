@@ -16,6 +16,10 @@ const ItemCompra = sequelize.define('ItemCompra', {
     type: DataTypes.FLOAT,
     allowNull: false,
   },
+  compra_id:{
+    type: DataTypes.INTEGER,
+    allowNull: false
+  }
 });
 
 export default ItemCompra;

@@ -230,3 +230,23 @@ export async function editTicket(req, res) {
     }
 
 }
+
+export async function listarIngressosPorEvento(req,res){
+
+    const {evento_id} =  req.body 
+    if(!evento_id){
+        return res.status(400).json({msg: "Evento não encontrado!"})
+    }
+
+     // Busca todas as compras do usuário
+     const eventos = await Event.findAll({
+        where: { evento_id },
+        include: [
+            {
+                model: Ingresso,
+            },
+        ],
+    });
+
+    return res.status(200).json(eventos)
+}

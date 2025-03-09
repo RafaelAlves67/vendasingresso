@@ -18,6 +18,7 @@ import userRoute from './routes/userRoute.js'
 import houseRoute from './routes/houseRoute.js'
 import eventRoute from './routes/eventRoute.js'
 import ingressoRoute from './routes/IngressoRoute.js'
+import compraRoute from './routes/compraRoute.js'
 
 // chamando o express
 const app = express()
@@ -31,7 +32,7 @@ app.use(express.json())
 app.use('/user', userRoute)
 app.use('/house', houseRoute)
 app.use('/event', eventRoute)
-app.use('/ingresso', ingressoRoute)
+app.use('/ingresso', ingressoRoute, compraRoute)
 
 // ativando servidor
 const port = 3000
@@ -39,7 +40,7 @@ const port = 3000
 async function startServer() {
     try {
         setupAssociations();
-        await db.sync(); // Aguarda a sincronização do banco antes de iniciar o servidor
+        await db.sync({}); // Aguarda a sincronização do banco antes de iniciar o servidor
         console.log("Banco sincronizado...");
 
         app.listen(port, () => {

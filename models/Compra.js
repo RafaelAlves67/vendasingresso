@@ -15,7 +15,7 @@ const Compra = sequelize.define('Compra', {
   valor_total: {
     type: DataTypes.FLOAT,
     allowNull: false,
-  },
+  }
 });
 
 export default Compra;
