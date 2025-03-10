@@ -2,6 +2,7 @@ import Compra from "../models/Compra.js";
 import User from '../models/user.js'
 import Ingresso from '../models/Ingresso.js'
 import ItemCompra from "../models/ItemCompra.js";
+import { Op } from "sequelize";
 
 
 // CRIAR A COMPRA
@@ -33,14 +34,20 @@ export async function criarCompra(req,res) {
                 return res.status(400).json({msg: "Ingresso não encontrado!"})
             }
 
-            // checkar quantidades 
-            if(item.quantidade > (ingresso.quantidade_total - ingresso.quantidade_vendida)){
-                return res.status(409).json({msg: "Quantidade de ingressos indisponível"})
+            // checkar se a quantidade maxima por compra está permitida
+            if(ingresso.quantidade_maxima_por_compra < item.quantidade){
+                return res.status(400).json({msg: "Quantidade maxima por compra não permitida!"})
             }
-
+            // checkar se evento ja está esgotado
             if(ingresso.quantidade_total < ingresso.quantidade_vendida){
                 return res.status(409).json({msg: "Ingresso esgotado!"})
             }
+
+            // checkar quantidades 
+            if(item.quantidade > (ingresso.quantidade_total - ingresso.quantidade_vendida)){
+                return res.status(409).json({msg: "Quantidade de ingressos indisponível!"})
+            }
+
         
         
         // Cria o item de compra, copiando o valor do ingresso para valor_unitario
@@ -101,5 +108,93 @@ export async function listarIngressosComprados(req,res){
     } catch (error) {
         console.log("Erro na rota de listar compras por usuario => ", error)
         return res.status(500).json({ msg: "Erro na rota de listar compras por usuario => ", error })
+    }
+}
+
+export async function cancelarCompra(req,res) {
+    try {
+        const {usuario_id, compra_id} = req.body 
+        // Busca a compra
+        const compra = await Compra.findByPk(compra_id);
+        if(!compra){
+            return res.status(400).json({msg: "Id de compra inválido"})
+        }
+        if(compra.status === 'Cancelada'){
+            return res.status(400).json({msg: "Esta compra ja está cancelada!"})
+        }
+
+        if(compra.usuario_id !== usuario_id){
+            return res.status(403).json({msg: "Você nao tem permissão para cancelar essa compra!"})
+        }
+
+        const itemCompra = await ItemCompra.findAll({where: {compra_id: compra_id}})
+        if(itemCompra.length === 0){
+            return res.status(400).json({msg: "Item Compra não encontrado"})
+        }
+
+        // voltando com as quantidades disponíveis
+        for(let item of itemCompra){
+            const ingresso = await Ingresso.findByPk(item.ingresso_id)
+            if (!ingresso) {
+                return res.status(400).json({ msg: "Ingresso não encontrado!" });
+            }
+
+            ingresso.quantidade_vendida -= item.quantidade 
+            await ingresso.save();
+        }
+
+
+        // Atualiza o status da compra para "Cancelada"
+        const [updated] = await Compra.update(
+            { status: 'Cancelada' },
+            { where: { compra_id } }
+        );
+
+        if (!updated) {
+            return res.status(400).json({ msg: "Falha ao cancelar a compra!" });
+        }
+
+        // Retorna a compra atualizada
+        const compraAtualizada = await Compra.findByPk(compra_id);
+        return res.status(200).json({ msg: "Compra cancelada com sucesso!", compra: compraAtualizada });
+    } catch (error) {
+        console.log("Erro na rota de cancelar compras => ", error)
+        return res.status(500).json({ msg: "Erro na rota de cancelar compras => ", error })
+    }
+}
+
+
+export async function listarComprasPorData(req,res){
+
+    try {
+        const {dataInicio, dataFim} = req.body 
+
+        if(!dataInicio){
+            return res.status(400).json({msg: "Informe a data inicial"})
+        }
+        if(!dataFim){
+            return res.status(400).json({msg: "Informe a data final"})
+        }
+    
+        const dataInicialFormat = new Date(dataInicio)
+        const dataFimFormat = new Date(dataFim)
+    
+        const compras = await Compra.findAll({
+            where: {
+                data_compra: {
+                    [Op.between]: [dataInicialFormat, dataFimFormat]
+                }
+            }
+            
+        })
+    
+        if(compras.length === 0){
+            return res.status(400).json({msg: "Nenhuma compra encontrada!"})
+        }
+    
+        return res.status(200).json(compras)        
+    } catch (error) {
+        console.log("Erro na rota de listar compras por datas => ", error)
+        return res.status(500).json({ msg: "Erro na rota de listar compras por datas => ", error })
     }
 }

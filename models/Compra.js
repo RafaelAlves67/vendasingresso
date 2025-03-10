@@ -2,7 +2,7 @@ import { DataTypes, Sequelize } from 'sequelize';
 import sequelize from '../data/db.js';
 
 const Compra = sequelize.define('Compra', {
-    compra_id: {
+  compra_id: {
         primaryKey: true,
         autoIncrement: true,
         type: DataTypes.INTEGER,
@@ -15,6 +15,12 @@ const Compra = sequelize.define('Compra', {
   valor_total: {
     type: DataTypes.FLOAT,
     allowNull: false,
+  },
+
+  status: {
+    type: DataTypes.ENUM('Ativa', 'Cancelada'),
+    allowNull: true,
+    defaultValue: 'Ativa'
   }
 });
 
