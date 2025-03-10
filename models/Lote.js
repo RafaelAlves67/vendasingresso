@@ -16,6 +16,11 @@ const Lote = db.define('Lote', {
   hora_termino_vendas: {
     type: DataTypes.TIME,
     allowNull: false,
+  },
+
+  ingresso_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false
   }
 });
 

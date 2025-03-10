@@ -1,5 +1,6 @@
 import Event from "../models/event.js"
 import Ingresso from "../models/Ingresso.js"
+import Lote from "../models/Lote.js"
 import { Op } from "sequelize"
 
 export async function registerTicket(req, res) {
@@ -22,6 +23,8 @@ export async function registerTicket(req, res) {
         if (!house_id) {
             return res.status(400).json({ msg: "Evento não possui um house_id associado" });
         }
+
+        const allTickets = [] // Lista para armazenar todos ingressos
 
         for (let ticket of tickets) {
             // VALIDAÇÕES
@@ -65,11 +68,6 @@ export async function registerTicket(req, res) {
                 return res.status(400).json({ msg: "Informe o título do ingresso" })
             }
 
-            const ingressoId = await Ingresso.findByPk(ticket.ingresso_id)
-            if (ingressoId) {
-                return res.status(409).json({ msg: "Id de ingresso ja existe" })
-            }
-
             // Conversão dos valores da requisição
             const dateIngressoStart = new Date(ticket.data_inicio_vendas); // Converte a data para Date
             const dateIngressoEnd = new Date(ticket.data_termino_vendas); // Converte a data para Date
@@ -83,9 +81,51 @@ export async function registerTicket(req, res) {
             if (dateIngressoEnd < dateIngressoStart) {
                 return res.status(400).json({ msg: "A data final não pode ser antes da data inicial!" });
             }
+
+            // declarando id do evento nos ingressos
             ticket.evento_id = evento_id
+
+            // adicionando ingressos princial
+            allTickets.push(ticket)
+
+            // criando ingresso meia entrada
+            if (ticket.meia_entrada) {
+
+                if (!ticket.quantidade_meia_entrada) {
+                    return res.status(400).json({ msg: "Informe a quantidade de ingresso meia-entrada" });
+                }
+
+                if (!ticket.valor_meia_entrada) {
+                    return res.status(400).json({ msg: "Informe o valor do ingresso meia-entrada" });
+                }
+
+                let meiaEntrada = {
+                    ...ticket,
+                    titulo: `${ticket.titulo} (Meia-Entrada)`, // Adiciona o sufixo
+                    valor: ticket.valor_meia_entrada, // Define o preço da meia-entrada
+                    quantidade_total: ticket.quantidade_meia_entrada, // Define a quantidade da meia-entrada
+                }
+
+                // adicionando ingressos meia-entrada
+                allTickets.push(meiaEntrada)
+            }
         }
-        const novosIngressos = await Ingresso.bulkCreate(tickets)
+
+
+            const novosIngressos = await Ingresso.bulkCreate(allTickets)
+
+            // criar lotes para ingressos do tipo "Por Lote"
+            for (let i = 0; i < allTickets.length; i++) {
+                if (allTickets[i].periodo_vendas_tipo === 'Por Lote') {
+                    await Lote.create({
+                        data_termino_vendas: allTickets[i].data_termino_vendas,
+                        hora_termino_vendas: allTickets[i].hora_termino_vendas,
+                        ingresso_id: novosIngressos[i].ingresso_id 
+                    });
+                }
+            }
+        
+
         return res.status(200).json({ msg: "Ingressos cadastrado", novosIngressos })
 
     } catch (error) {
@@ -164,14 +204,22 @@ export async function editTicket(req, res) {
         }
 
         if (!ticket.quantidade_minima_por_compra) {
-            return res.status(400).json({ msg: "Informe o título do ingresso" })
+            return res.status(400).json({ msg: "Informe a quantidade minima por compra" })
         }
 
         if (!ticket.quantidade_maxima_por_compra) {
-            return res.status(400).json({ msg: "Informe o título do ingresso" })
+            return res.status(400).json({ msg: "Informe a quantidade maxima por compra" })
         }
 
+        if(ticket.quantidade_maxima_por_compra < quantidade_minima_por_compra){
+             return res.status(400).json({msg: "A quantidade maxima deve ser maior que a quantidade minima."})
+        }
 
+        if(ticket.quantidade_total < ticket.quantidade_vendida){
+            return res.status(400).json({msg: "A quantidade total deve ser maior ou igual a quantidade vendida."})
+        }
+
+        
 
         // Conversão dos valores da requisição
         const dateIngressoStart = new Date(ticket.data_inicio_vendas); // Converte a data para Date
