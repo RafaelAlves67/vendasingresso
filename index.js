@@ -4,7 +4,7 @@ import cors from 'cors'
 import db from './data/db.js'
 // MODELS
 import User from './models/user.js'
-import showHouse from './models/showHouse.js'
+import showHouse from './models/Local.js'
 import Event from './models/event.js'
 import Ingresso from './models/Ingresso.js'
 import producer from './models/Produtor.js'
@@ -40,7 +40,7 @@ const port = 3000
 async function startServer() {
     try {
         setupAssociations();
-        await db.sync(); // Aguarda a sincronização do banco antes de iniciar o servidor
+        await db.sync({alter: true}); // Aguarda a sincronização do banco antes de iniciar o servidor
         console.log("Banco sincronizado...");
 
         app.listen(port, () => {

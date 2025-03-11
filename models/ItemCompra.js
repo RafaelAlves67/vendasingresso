@@ -19,7 +19,11 @@ const ItemCompra = sequelize.define('ItemCompra', {
   compra_id:{
     type: DataTypes.INTEGER,
     allowNull: false
-  }
+  },
+  ingresso_id:{
+    type: DataTypes.INTEGER,
+    allowNull: false
+  },
 });
 
 export default ItemCompra;

@@ -1,7 +1,7 @@
 import { DataTypes } from "sequelize";
 import db from "../data/db.js";
 
-const showHouse = db.define("House", {
+const Local = db.define("Local", {
   house_id: {  
         type: DataTypes.INTEGER,
         primaryKey: true,
@@ -46,10 +46,10 @@ const showHouse = db.define("House", {
     },
   }
 }, {
-  tableName: "casas_de_show",
+  tableName: "Local",
   timestamps: true,
 });
 
 
 
-export default showHouse;
+export default Local;

@@ -1,6 +1,6 @@
 import { DataTypes } from "sequelize";
 import db from "../data/db.js";
-import ShowHouse from "./showHouse.js";
+import ShowHouse from "./Local.js";
 import producer from "./Produtor.js";
 import Ingresso from "./Ingresso.js";
 
@@ -63,7 +63,7 @@ const Event = db.define("Event", {
   },
   house_id: {
     type: DataTypes.INTEGER, // Certifique-se de que este tipo é o correto
-    allowNull: false, // ou true dependendo do seu caso
+    allowNull: false, 
 }
  
 }, {

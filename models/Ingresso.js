@@ -32,25 +32,32 @@ const Ingresso = db.define('Ingresso', {
   },
   periodo_vendas_tipo: {
     type: DataTypes.ENUM('Por Data', 'Por Lote'),
+    defaultValue: 'Por Data',
     allowNull: false,
   },
   data_inicio_vendas: {
     type: DataTypes.DATEONLY,
+    allowNull: false
   },
   hora_inicio_vendas: {
     type: DataTypes.TIME,
+    allowNull: false
   },
   data_termino_vendas: {
     type: DataTypes.DATEONLY,
+    allowNull: false
   },
   hora_termino_vendas: {
     type: DataTypes.TIME,
+    allowNull: false
   },
   quantidade_minima_por_compra: {
     type: DataTypes.INTEGER,
+    allowNull: false
   },
   quantidade_maxima_por_compra: {
     type: DataTypes.INTEGER,
+    allowNull: false
   },
   descricao: {
     type: DataTypes.TEXT,

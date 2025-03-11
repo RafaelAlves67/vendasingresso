@@ -4,7 +4,7 @@ import Lote from '../models/Lote.js';
 import Compra from '../models/Compra.js';
 import ItemCompra from '../models/ItemCompra.js';
 import User from '../models/user.js';
-import showHouse from '../models/showHouse.js';
+import showHouse from '../models/Local.js';
 import Produtor from '../models/Produtor.js';
 
 export default function setupAssociations() {

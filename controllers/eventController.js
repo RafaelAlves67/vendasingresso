@@ -1,7 +1,6 @@
 import Event from "../models/event.js";
-import showHouse from "../models/showHouse.js";
+import Local from "../models/Local.js";
 import { Op } from "sequelize";
-import Ticket from "../models/Ingresso.js";
 import { parse , isAfter, isEqual} from "date-fns";
 
 export async function registerEvent(req, res) {
@@ -23,7 +22,7 @@ export async function registerEvent(req, res) {
         }
 
         if (!house_id) {
-            return res.status(400).json({ msg: "Insira a casa de show do evento!" })
+            return res.status(400).json({ msg: "Insira o local do evento!" })
         }
 
         if (!dateStart) {
@@ -43,7 +42,7 @@ export async function registerEvent(req, res) {
             return res.status(400).json({ msg: "Insira o horario final do evento!" })
         }
 
-        const houseVerify = await showHouse.findByPk(house_id)
+        const houseVerify = await Local.findByPk(house_id)
         if(!houseVerify){
             return res.status(400).json({msg: "Id de local nao encontrado!"})
         }
@@ -169,14 +168,14 @@ export async function getEventAll(req, res) {
 
 export async function getEventsByHouse(req, res) {
     try {
-        // id da casa de show
+        // id do local
         const house_id = req.params.house_id
         // verificando a existencia dessa casa
-        const house = await showHouse.findByPk(house_id)
+        const house = await Local.findByPk(house_id)
         if (!house) {
             return res.status(400).json({ msg: "Casa de show não encontrada!" })
         }
-        // buscando todos eventos dessa casa de show
+        // buscando todos eventos desse local
         const eventsByHouse = await Event.findAll({ where: { house_id: house_id } })
         if (!eventsByHouse) {
             return res.status(400).json({ msg: `Nenhum evento encontrado na ${house.name}` })
@@ -185,8 +184,8 @@ export async function getEventsByHouse(req, res) {
         return res.status(200).json(eventsByHouse)
     }
     catch (error) {
-        console.log("Erro com a rota de evento por casa de show => ", error)
-        return res.status(500).json({ msg: "Erro com a rota de evento por casa de show => ", error })
+        console.log("Erro com a rota de evento por local => ", error)
+        return res.status(500).json({ msg: "Erro com a rota de evento por local => ", error })
     }
 }
 
@@ -223,7 +222,7 @@ export async function editEvent(req, res) {
         }
 
         if (!house_id) {
-            return res.status(400).json({ msg: "Insira a casa de show do evento!" })
+            return res.status(400).json({ msg: "Insira o local do evento!" })
         }
 
         if (!dateStart) {
@@ -268,7 +267,7 @@ export async function editEvent(req, res) {
             return res.status(400).json({ msg: "Não houve mudanças no evento, altere algo!" })
         }
 
-        const houseVerify = await showHouse.findByPk(house_id)
+        const houseVerify = await Local.findByPk(house_id)
         if(!houseVerify){
             return res.status(400).json({msg: "Id de local nao encontrado!"})
         }

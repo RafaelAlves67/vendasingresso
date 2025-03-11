@@ -1,6 +1,6 @@
 import express from 'express'
 import { authToken } from '../helpers/authToken.js'
-import {deleteHouse, editHouse, getSearchHouse, getHouseAll, registerHouse } from '../controllers/houseController.js'
+import {deleteHouse, editHouse, getSearchHouse, getHouseAll, registerHouse } from '../controllers/LocalController.js'
 
 // chamando a rota
 const houseRoute = express.Router()

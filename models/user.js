@@ -8,7 +8,7 @@ const User = db.define('User', {
     password: { type: DataTypes.STRING, allowNull: false },
     phone: {type: DataTypes.STRING, allowNull: false, unique: true},
     birth: {type: DataTypes.DATE, allowNull: false},
-    role: {type: DataTypes.ENUM(['Admin', 'Usuario']), defaultValue: "Usuario"}
+    role: {type: DataTypes.ENUM(['Admin', 'Usuario']), defaultValue: "Usuario", allowNull: false}
   }, { 
     tableName: 'users', // Nome da tabela no banco
     timestamps: true // createdAt e updatedAt

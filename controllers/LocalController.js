@@ -1,4 +1,4 @@
-import showHouse from "../models/showHouse.js";
+import Local from "../models/Local.js";
 import { Op } from "sequelize";
 import { validateEmail } from "../helpers/validateEmail.js";
 import { validateCEP } from "../helpers/validateCEP.js";
@@ -30,7 +30,7 @@ export async function registerHouse(req,res){
         }
 
         // validar se existe casa ja no mesmo cep 
-        const houseVerifyCEP = await showHouse.findOne({where: {zip_code: zip_code}})
+        const houseVerifyCEP = await Local.findOne({where: {zip_code: zip_code}})
         if(houseVerifyCEP){
             return res.status(409).json({msg: "CEP ja cadastrado!"})
         }
@@ -40,7 +40,7 @@ export async function registerHouse(req,res){
             return res.status(400).json({msg: "CEP inválido!"})
         }
 
-        const newShowHouse = await showHouse.create({
+        const newLocal = await Local.create({
             name: name, 
             address: address,
             city: city,
@@ -51,13 +51,13 @@ export async function registerHouse(req,res){
             complemento: complemento
         })
 
-        return res.status(200).json({msg: "Casa de show cadastrada!", newShowHouse})
+        return res.status(200).json({msg: "Local cadastrada!", newLocal})
 
 
 
     } catch (error) {
-        console.log("Erro na rota de cadastro de casa de show => " , error)
-        return res.status(500).json({msg: "Erro na rota de cadastro de casa de show => ", error})
+        console.log("Erro na rota de cadastro de Local => " , error)
+        return res.status(500).json({msg: "Erro na rota de cadastro de Local => ", error})
     }
 }
 
@@ -68,7 +68,7 @@ export async function editHouse(req,res){
     // validações
     const houseEdited = {house_id, name,  address, city, state, zip_code, website, number, complemento}
     // verificar se id está correto
-    const houseVerify = await showHouse.findByPk(house_id)
+    const houseVerify = await Local.findByPk(house_id)
     if(!houseVerify){
         return res.status(400).json({msg: "Id house inválido!"})
     }
@@ -115,19 +115,19 @@ export async function editHouse(req,res){
    }
 
    if(zip_code){
-    const cepVerify = await showHouse.findOne({where: {zip_code: zip_code}})
+    const cepVerify = await Local.findOne({where: {zip_code: zip_code}})
     if(cepVerify){
         return res.status(409).json({msg: "CEP já cadastrado!"})
     }
 }
 
    
-   await showHouse.update({name: name, address: address, city: city, state: state, zip_code: zip_code, website: website, number: number, complemento: complemento}, {where: {house_id: house_id}})
-   return res.status(200).json({msg: "Casa de show editada!", houseEdited})
+   await Local.update({name: name, address: address, city: city, state: state, zip_code: zip_code, website: website, number: number, complemento: complemento}, {where: {house_id: house_id}})
+   return res.status(200).json({msg: "Local editada!", houseEdited})
      
     } catch (error) {
-        console.log("Erro na rota de edit de casa de show => " , error)
-        return res.status(500).json({msg: "Erro na rota de edit de casa de show => ", error})
+        console.log("Erro na rota de edit de Local => " , error)
+        return res.status(500).json({msg: "Erro na rota de edit de Local => ", error})
 
     }
 }
@@ -137,23 +137,23 @@ export async function deleteHouse(req,res){
         const house_id = req.params.id 
 
         // validação
-        const houseVerify = await showHouse.findByPk(house_id)
+        const houseVerify = await Local.findByPk(house_id)
         if(!houseVerify){
             return res.status(400).json({msg: "Id inválido"})
         }
         
-        await showHouse.destroy({where: {house_id: house_id}})
-        return res.status(200).json({msg: "Casa de show excluida!"})   
+        await Local.destroy({where: {house_id: house_id}})
+        return res.status(200).json({msg: "Local excluida!"})   
     } catch (error) {
-        console.log("Erro na rota de delete de casa de show => " , error)
-        return res.status(500).json({msg: "Erro na rota de delete de casa de show => ", error})
+        console.log("Erro na rota de delete de Local => " , error)
+        return res.status(500).json({msg: "Erro na rota de delete de Local => ", error})
     }
 }
 
 export async function getSearchHouse(req,res){
     const name = req.params.name 
 
-    const resultHouses = await showHouse.findAll({
+    const resultHouses = await Local.findAll({
         where: {
             name: {
                 [Op.like]: `%${name}%`
@@ -162,7 +162,7 @@ export async function getSearchHouse(req,res){
     })
 
     if(!resultHouses){
-        return res.status(400).json({msg: "Nenhuma casa de show encontrada."})
+        return res.status(400).json({msg: "Nenhum local encontrado."})
     }
 
     return res.status(200).json(resultHouses)
@@ -170,15 +170,15 @@ export async function getSearchHouse(req,res){
 
 export async function getHouseAll(req,res){
     try {
-        const houses = await showHouse.findAll()
+        const houses = await Local.findAll()
 
         if(!houses){
-            return res.status(400).json({msg: "Nenhuma casa de show cadastrada"})
+            return res.status(400).json({msg: "Nenhum local cadastrado"})
         }
     
         return res.status(400).json(houses)   
     } catch (error) {
-        console.log("Erro na rota de get de todos casas de show => " , error)
-        return res.status(500).json({msg: "Erro na rota de get de todos casas de show => ", error})
+        console.log("Erro na rota de get de todos locais => " , error)
+        return res.status(500).json({msg: "Erro na rota de get de todos locais => ", error})
     }
 }
