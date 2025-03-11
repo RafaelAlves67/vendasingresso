@@ -27,6 +27,17 @@ const showHouse = db.define("House", {
     type: DataTypes.STRING,
     allowNull: false,
   },
+
+  number:{
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
+
+  complemento: {
+      type: DataTypes.STRING,
+      allowNull: true
+  },
+
   website: {
     type: DataTypes.STRING,
     allowNull: true,

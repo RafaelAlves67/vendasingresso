@@ -2,11 +2,12 @@ import Event from "../models/event.js";
 import showHouse from "../models/showHouse.js";
 import { Op } from "sequelize";
 import Ticket from "../models/Ingresso.js";
+import { parse , isAfter, isEqual} from "date-fns";
 
 export async function registerEvent(req, res) {
 
     try {
-        const { name, description, startTime, endTime, dateStart, dateEnd, category, subject, house_id, photos} = req.body
+        const { name, description, startTime, endTime, dateStart, dateEnd, category, subject, house_id, photos } = req.body
         
         // validações 
         if (!name) {
@@ -60,6 +61,16 @@ export async function registerEvent(req, res) {
         if(dateEnd < dateStart){
             return res.status(400).json({ msg: "A data final não pode ser antes da data inicial!" });
         }
+
+        if (isEqual(parse(dateStart, "yyyy-MM-dd", new Date()), parse(dateEnd, "yyyy-MM-dd", new Date()))) {
+            const horaInicio = parse(startTime, "HH:mm", new Date());
+            const horaFinal = parse(endTime, "HH:mm", new Date());
+        
+            if (isAfter(horaInicio, horaFinal)) {
+                return res.status(400).json({ msg: "A hora inicial não pode ser maior que a hora final em eventos no mesmo dia!" });
+            }
+        }
+        
 
         // Validação de horário e conflito de eventos
         const eventByDataAndHouse = await Event.findOne({
@@ -275,6 +286,15 @@ export async function editEvent(req, res) {
 
         if(dateEnd < dateStart){
             return res.status(400).json({ msg: "A data final não pode ser antes da data inicial!" });
+        }
+
+        if (isEqual(parse(dateStart, "yyyy-MM-dd", new Date()), parse(dateEnd, "yyyy-MM-dd", new Date()))) {
+            const horaInicio = parse(startTime, "HH:mm", new Date());
+            const horaFinal = parse(endTime, "HH:mm", new Date());
+        
+            if (isAfter(horaInicio, horaFinal)) {
+                return res.status(400).json({ msg: "A hora inicial não pode ser maior que a hora final em eventos no mesmo dia!" });
+            }
         }
 
         // Validação de horário e conflito de eventos

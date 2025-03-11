@@ -6,7 +6,7 @@ import { validateCEP } from "../helpers/validateCEP.js";
 export async function registerHouse(req,res){
 
     try {
-        const {name, address, city, state, zip_code, phone, email, website } = req.body
+        const {name, address, city, state, zip_code, website, number, complemento } = req.body
 
         // validações
         if(!name){
@@ -35,18 +35,6 @@ export async function registerHouse(req,res){
             return res.status(409).json({msg: "CEP ja cadastrado!"})
         }
 
-        // validar numero valido 
-        if(phone){
-           if(phone.length !== 11){
-                return res.status(400).json({msg: "Insira um número de celular válido!"})
-           }
-        }
-
-        // validar email
-        if(email && !validateEmail(email)){      
-            return res.status(400).json({msg: "E-mail inválido!"})
-        }
-
         // validar cep
         if(zip_code && !validateCEP(zip_code)){
             return res.status(400).json({msg: "CEP inválido!"})
@@ -58,9 +46,9 @@ export async function registerHouse(req,res){
             city: city,
             state: state,
             zip_code: zip_code,
-            phone: phone,
-            email: email,
-            website: website
+            website: website,
+            number: number, 
+            complemento: complemento
         })
 
         return res.status(200).json({msg: "Casa de show cadastrada!", newShowHouse})
@@ -75,10 +63,10 @@ export async function registerHouse(req,res){
 
 export async function editHouse(req,res){
     try {
-        const {house_id,name,  address, city, state, zip_code, phone, email, website} = req.body 
+        const {house_id,name,  address, city, state, zip_code, website, number, complemento} = req.body 
 
     // validações
-    const houseEdited = {house_id, name,  address, city, state, zip_code, phone, email, website}
+    const houseEdited = {house_id, name,  address, city, state, zip_code, website, number, complemento}
     // verificar se id está correto
     const houseVerify = await showHouse.findByPk(house_id)
     if(!houseVerify){
@@ -108,19 +96,9 @@ export async function editHouse(req,res){
         return res.status(400).json({msg: "Campo CEP não pode estar vazio!"})
     } 
 
-    // validar email
-    if(email && !validateEmail(email)){      
-            return res.status(400).json({msg: "E-mail inválido!"})
-    }
-
     // validar cep
     if(zip_code && !validateCEP(zip_code)){
         return res.status(400).json({msg: "CEP inválido!"})
-    }
-
-    // validar phone
-    if(phone && phone.length !== 11){
-        return res.status(400).json({msg: "Insira um número de celular válido!"})
     }
 
     const hasChanges = Object.keys(houseEdited).some(key => {
@@ -144,7 +122,7 @@ export async function editHouse(req,res){
 }
 
    
-   await showHouse.update({name: name, email: email, phone: phone, address: address, city: city, state: state, zip_code: zip_code, website: website}, {where: {house_id: house_id}})
+   await showHouse.update({name: name, address: address, city: city, state: state, zip_code: zip_code, website: website, number: number, complemento: complemento}, {where: {house_id: house_id}})
    return res.status(200).json({msg: "Casa de show editada!", houseEdited})
      
     } catch (error) {

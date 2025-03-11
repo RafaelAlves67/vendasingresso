@@ -1,7 +1,7 @@
 import Event from "../models/event.js"
 import Ingresso from "../models/Ingresso.js"
 import Lote from "../models/Lote.js"
-import { Op } from "sequelize"
+import { parse , isAfter, isEqual} from "date-fns";
 
 export async function registerTicket(req, res) {
     try {
@@ -68,6 +68,10 @@ export async function registerTicket(req, res) {
                 return res.status(400).json({ msg: "Informe o título do ingresso" })
             }
 
+            if(ticket.periodo_vendas_tipo !== 'Por Data' && ticket.periodo_vendas_tipo !== 'Por Lote'){
+                return res.status(400).json({ msg: "Periodo de vendas inválido" })
+            }
+
             // Conversão dos valores da requisição
             const dateIngressoStart = new Date(ticket.data_inicio_vendas); // Converte a data para Date
             const dateIngressoEnd = new Date(ticket.data_termino_vendas); // Converte a data para Date
@@ -80,6 +84,15 @@ export async function registerTicket(req, res) {
 
             if (dateIngressoEnd < dateIngressoStart) {
                 return res.status(400).json({ msg: "A data final não pode ser antes da data inicial!" });
+            }
+
+            if (isEqual(parse(ticket.data_inicio_vendas, "yyyy-MM-dd", new Date()), parse(ticket.data_termino_vendas, "yyyy-MM-dd", new Date()))) {
+                const horaInicio = parse(ticket.hora_inicio_vendas, "HH:mm", new Date());
+                const horaFinal = parse(ticket.hora_termino_vendas, "HH:mm", new Date());
+            
+                if (isAfter(horaInicio, horaFinal)) {
+                    return res.status(400).json({ msg: "A hora inicial não pode ser maior que a hora final em eventos no mesmo dia!" });
+                }
             }
 
             // declarando id do evento nos ingressos
@@ -95,20 +108,18 @@ export async function registerTicket(req, res) {
                     return res.status(400).json({ msg: "Informe a quantidade de ingresso meia-entrada" });
                 }
 
-                if (!ticket.valor_meia_entrada) {
-                    return res.status(400).json({ msg: "Informe o valor do ingresso meia-entrada" });
-                }
-
                 let meiaEntrada = {
                     ...ticket,
                     titulo: `${ticket.titulo} (Meia-Entrada)`, // Adiciona o sufixo
-                    valor: ticket.valor_meia_entrada, // Define o preço da meia-entrada
+                    valor: Math.floor(ticket.valor / 2), // Define o preço da meia-entrada
                     quantidade_total: ticket.quantidade_meia_entrada, // Define a quantidade da meia-entrada
                 }
 
                 // adicionando ingressos meia-entrada
                 allTickets.push(meiaEntrada)
             }
+
+            ticket.meia_entrada = false;
         }
 
 
@@ -211,7 +222,11 @@ export async function editTicket(req, res) {
             return res.status(400).json({ msg: "Informe a quantidade maxima por compra" })
         }
 
-        if(ticket.quantidade_maxima_por_compra < quantidade_minima_por_compra){
+        if(ticket.periodo_vendas_tipo !== 'Por Data' && ticket.periodo_vendas_tipo !== 'Por Lote'){
+            return res.status(400).json({ msg: "Periodo de vendas inválido" })
+        }
+
+        if(ticket.quantidade_maxima_por_compra < ticket.quantidade_minima_por_compra){
              return res.status(400).json({msg: "A quantidade maxima deve ser maior que a quantidade minima."})
         }
 
@@ -219,8 +234,7 @@ export async function editTicket(req, res) {
             return res.status(400).json({msg: "A quantidade total deve ser maior ou igual a quantidade vendida."})
         }
 
-        
-
+    
         // Conversão dos valores da requisição
         const dateIngressoStart = new Date(ticket.data_inicio_vendas); // Converte a data para Date
         const dateIngressoEnd = new Date(ticket.data_termino_vendas); // Converte a data para Date
@@ -233,6 +247,15 @@ export async function editTicket(req, res) {
 
         if (dateIngressoEnd < dateIngressoStart) {
             return res.status(400).json({ msg: "A data final não pode ser antes da data inicial!" });
+        }
+
+        if (isEqual(parse(ticket.data_inicio_vendas, "yyyy-MM-dd", new Date()), parse(ticket.data_termino_vendas, "yyyy-MM-dd", new Date()))) {
+            const horaInicio = parse(ticket.hora_inicio_vendas, "HH:mm", new Date());
+            const horaFinal = parse(ticket.hora_termino_vendas, "HH:mm", new Date());
+        
+            if (isAfter(horaInicio, horaFinal)) {
+                return res.status(400).json({ msg: "A hora inicial não pode ser maior que a hora final em eventos no mesmo dia!" });
+            }
         }
 
         const ingressoData = ingresso.get({ plain: true }); // Remove metadata do Sequelize

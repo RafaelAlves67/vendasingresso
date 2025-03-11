@@ -40,7 +40,7 @@ const port = 3000
 async function startServer() {
     try {
         setupAssociations();
-        await db.sync({}); // Aguarda a sincronização do banco antes de iniciar o servidor
+        await db.sync(); // Aguarda a sincronização do banco antes de iniciar o servidor
         console.log("Banco sincronizado...");
 
         app.listen(port, () => {
