@@ -181,6 +181,8 @@ export async function editUser(req,res){
         return res.status(400).json({msg: "Campo data nascimento não pode estar vazio!"})
     } 
 
+    
+
     // verificando caso não tenha editado nada no usuario
 
     // transformando data do banco em um objeto de date javascript
@@ -197,6 +199,10 @@ export async function editUser(req,res){
     if(!hasChanges){
         return res.status(404).json({msg: "Não houve mudanças, altere algo!"})
    }
+
+   // verificar se a senha está correta e criptografar
+    const salt = 12 
+    const hashPassword = await bcrypt.hash(password, salt) 
 
    // verificar se caso a edição for email ou phone, se ja existe esse novo valor cadastrado 
    if(user.email !== email){
@@ -215,7 +221,7 @@ export async function editUser(req,res){
         }
    }
 
-    await User.update({name: name, email: email, password: password, phone: phone, birth: dateBirth}, {where: {id: id}})
+    await User.update({name: name, email: email, password: hashPassword, phone: phone, birth: dateBirth}, {where: {id: id}})
     return res.status(200).json({msg: "Usuário editado!", userEdited})
 
     } catch (error) {

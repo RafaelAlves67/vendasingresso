@@ -35,12 +35,22 @@ export default function setupAssociations() {
   });
 
   Produtor.hasMany(Event, {
-    foreignKey: 'produtor_id', // Chave estrangeira no Evento
+    foreignKey: 'produtor_id', // Chave estrangeira do produtor
     as: 'eventos',             // Alias para o relacionamento
   });
   Event.belongsTo(Produtor, {
-    foreignKey: 'produtor_id', // Chave estrangeira no Evento
+    foreignKey: 'produtor_id', // Chave estrangeira do produtor
     as: 'produtor',            // Alias para o relacionamento
   });
+
+  Event.belongsTo(User, {
+    foreignKey: 'usuario_id', // Chave estrangeira do usuário
+    as: 'user',            // Alias para o relacionamento
+  });
+  User.hasMany(Event, {
+    foreignKey: 'usuario_id', // Chave estrangeira do usuario
+    as: 'user',          // Alias para o relacionamento
+  });
+
 
 }
