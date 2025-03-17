@@ -6,7 +6,7 @@ import { parse , isAfter, isEqual} from "date-fns";
 export async function registerEvent(req, res) {
 
     try {
-        const { name, description, startTime, endTime, dateStart, dateEnd, category, subject, house_id, photos } = req.body
+        const { name, description, startTime, endTime, dateStart, dateEnd, category, subject, house_id, photos, produtor_id } = req.body
         
         // validações 
         if (!name) {
@@ -40,6 +40,10 @@ export async function registerEvent(req, res) {
 
         if (!endTime) {
             return res.status(400).json({ msg: "Insira o horario final do evento!" })
+        }
+
+        if (!produtor_id) {
+            return res.status(400).json({ msg: "Insira o produtor do evento!" })
         }
 
         const houseVerify = await Local.findByPk(house_id)
@@ -117,7 +121,8 @@ export async function registerEvent(req, res) {
             startTime: startTime,
             endTime: endTime,
             subject: subject,
-            category: category
+            category: category,
+            produtor_id: produtor_id
         })
 
         return res.status(200).json({ msg: "Evento cadastrado!", newEvent })
@@ -209,7 +214,7 @@ export async function deleteEvent(req, res) {
 export async function editEvent(req, res) {
     try {
 
-        const { evento_id, name, description, startTime, endTime, house_id, photos, subject, category, dateStart, dateEnd  } = req.body
+        const { evento_id, name, description, startTime, endTime, house_id, photos, subject, category, dateStart, dateEnd, produtor_id  } = req.body
         const eventEdited = { evento_id, name, description, startTime, endTime,  house_id, photos, subject, category, dateStart, dateEnd  }
     
         // validações 
@@ -245,6 +250,10 @@ export async function editEvent(req, res) {
 
         if (!subject) {
             return res.status(400).json({ msg: "Informe o assunto do evento!" })
+        }
+
+        if (!produtor_id) {
+            return res.status(400).json({ msg: "Insira o produtor do evento!" })
         }
         
         const eventVerify = await Event.findByPk(evento_id)

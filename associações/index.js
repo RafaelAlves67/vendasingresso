@@ -43,11 +43,11 @@ export default function setupAssociations() {
     as: 'produtor',            // Alias para o relacionamento
   });
 
-  Event.belongsTo(User, {
+  Produtor.belongsTo(User, {
     foreignKey: 'usuario_id', // Chave estrangeira do usuário
     as: 'user',            // Alias para o relacionamento
   });
-  User.hasMany(Event, {
+  User.hasMany(Produtor, {
     foreignKey: 'usuario_id', // Chave estrangeira do usuario
     as: 'user',          // Alias para o relacionamento
   });

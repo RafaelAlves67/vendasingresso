@@ -16,6 +16,10 @@ const Produtor = db.define('Produtores', {
       type: DataTypes.STRING(255),
     },
 
+    usuario_id:{
+      type: DataTypes.STRING,
+      allowNull: false,
+    }
   }, {
     timestamps: true, // Inclui createdAt e updatedAt automaticamente
     tableName: 'produtores', // Define o nome da tabela explicitamente

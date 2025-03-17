@@ -2,7 +2,6 @@ import Event from "../models/event.js";
 import itemCompra from "../models/ItemCompra.js"
 import Ingresso from "../models/Ingresso";
 import Compra from "../models/Compra.js";
-import User from "../models/user.js";
 import { Op } from "sequelize";
 
 export async function listEventos_Vendas(req,res){
@@ -33,12 +32,12 @@ export async function listEventos_Vendas(req,res){
 
 export async function listEventosAll(req,res){
     try {
-        const {usuario_id} = req.body 
+        const {produtor_id} = req.body 
 
       
         const eventos_usuario = await Event.findAll({
             where: {
-                usuario_id: usuario_id
+                produtor_id: produtor_id
             },
             include: [
                 {
@@ -70,7 +69,7 @@ export async function listEventosAll(req,res){
 
 export async function listEventosUltimos12meses(req,res){
     try {
-        const {usuario_id} = req.body 
+        const {produtor_id} = req.body 
 
         const dateNow = new Date() 
         const date1anoatras = new Date()
@@ -78,7 +77,7 @@ export async function listEventosUltimos12meses(req,res){
     
         const eventos_usuario = await Event.findAll({
             where: {
-                usuario_id: usuario_id,
+                produtor_id: produtor_id,
                 dateEnd: {[Op.between]: [date1anoatras,dateNow]}
             },
             include: [
@@ -112,7 +111,7 @@ export async function listEventosUltimos12meses(req,res){
 
 export async function listEventosUltimos6meses(req,res){
     try {
-        const {usuario_id} = req.body 
+        const {produtor_id} = req.body 
 
         const dateNow = new Date() 
         const date6mesesAtras = new Date()
@@ -121,7 +120,7 @@ export async function listEventosUltimos6meses(req,res){
     
         const eventos_usuario = await Event.findAll({
             where: {
-                usuario_id: usuario_id,
+                produtor_id: produtor_id,
                 dateEnd: {[Op.between]: [date6mesesAtras,dateNow]}
             },
             include: [
@@ -154,7 +153,7 @@ export async function listEventosUltimos6meses(req,res){
 
 export async function listEventosUltimos30dias(req,res){
     try {
-        const {usuario_id} = req.body 
+        const {produtor_id} = req.body 
 
         const dateNow = new Date() 
         const date30diasAtras = new Date()
@@ -162,7 +161,7 @@ export async function listEventosUltimos30dias(req,res){
     
         const eventos_usuario = await Event.findAll({
             where: {
-                usuario_id: usuario_id,
+                produtor_id: produtor_id,
                 dateEnd: {[Op.between]: [date30diasAtras,dateNow]}
             },
             include: [

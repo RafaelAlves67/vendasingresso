@@ -64,12 +64,7 @@ const Event = db.define("Event", {
   house_id: {
     type: DataTypes.INTEGER, // Certifique-se de que este tipo é o correto
     allowNull: false, 
-}, 
-usuario_id: {
-    type: DataTypes.INTEGER,
-    allowNull: false
 }
- 
 }, {
   tableName: "events",
   timestamps: true
