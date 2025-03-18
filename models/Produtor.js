@@ -17,8 +17,8 @@ const Produtor = db.define('Produtores', {
     },
 
     usuario_id:{
-      type: DataTypes.STRING,
-      allowNull: false,
+      type: DataTypes.INTEGER,
+      allowNull: true,
     }
   }, {
     timestamps: true, // Inclui createdAt e updatedAt automaticamente

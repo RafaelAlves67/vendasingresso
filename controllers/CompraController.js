@@ -3,7 +3,9 @@ import User from '../models/user.js'
 import Ingresso from '../models/Ingresso.js'
 import ItemCompra from "../models/ItemCompra.js";
 import { Op } from "sequelize";
-
+import QRCode from 'qrcode'
+import jwt from "jsonwebtoken";
+const SECRET = process.env.SECRET_TICKET
 
 // CRIAR A COMPRA
 export async function criarCompra(req,res) {
@@ -47,15 +49,23 @@ export async function criarCompra(req,res) {
             if(item.quantidade > (ingresso.quantidade_total - ingresso.quantidade_vendida)){
                 return res.status(409).json({msg: "Quantidade de ingressos indisponível!"})
             }
-
-        
+            
+            // GERAR TOKEN E QRCODE
+            const payLoad = {
+                compra_id: compra.compra_id,
+                ingresso_id: item.ingresso_id
+            }
+            const token = jwt.sign(payLoad, SECRET)
+            console.log(token, "AQUI")
+            const qrCode = await QRCode.toDataURL(token)
         
         // Cria o item de compra, copiando o valor do ingresso para valor_unitario
        const itemCompra = await ItemCompra.create({
             compra_id: compra.compra_id,
             ingresso_id: item.ingresso_id,
             quantidade: item.quantidade,
-            valor_unitario: ingresso.valor, // Copia o valor do ingresso
+            valor_unitario: ingresso.valor,
+            qr_code: qrCode // TOKEN JWT
           }); 
           
           itensCompra.push(itemCompra)
@@ -77,6 +87,52 @@ export async function criarCompra(req,res) {
         return res.status(500).json({ msg: "Erro na rota de criar uma compra => ", error })
     }
     
+}
+
+export async function validarIngresso(req, res) {
+    try {
+        const { token } = req.body;
+
+        if (!token) {
+            return res.status(400).json({ msg: "Token não fornecido." });
+        }
+
+        // Verificar token
+        let verifyToken;
+        try {
+            verifyToken = jwt.verify(token, SECRET);
+        } catch (error) {
+            return res.status(403).json({ msg: "Token inválido ou expirado." });
+        }
+
+        // Verificar se os dados do ingresso existem no token
+        const { ingresso_id, compra_id} = verifyToken;
+        if (!ingresso_id || !compra_id) {
+            return res.status(400).json({ msg: "Token inválido, dados do ingresso ausentes." });
+        }
+
+        // Buscar o ingresso no banco de dados
+        const itemCompra = await ItemCompra.findOne({
+            where: { ingresso_id, compra_id}
+        });
+
+        if (!itemCompra) {
+            return res.status(400).json({ msg: "Código de ingresso inválido." });
+        }
+
+        if (itemCompra.usado) {
+            return res.status(400).json({ msg: "Ingresso já foi utilizado." });
+        }
+
+        // Atualizar o status do ingresso para usado
+        itemCompra.usado = true;
+        await itemCompra.save();
+
+        return res.status(200).json({ msg: "Ingresso autenticado.", itemCompra });
+    } catch (error) {
+        console.error("Erro na rota de validar ingresso => ", error);
+        return res.status(500).json({ msg: "Erro interno no servidor.", error });
+    }
 }
 
 // LISTA INGRESSOS
@@ -137,6 +193,10 @@ export async function cancelarCompra(req,res) {
             const ingresso = await Ingresso.findByPk(item.ingresso_id)
             if (!ingresso) {
                 return res.status(400).json({ msg: "Ingresso não encontrado!" });
+            }
+
+            if(item.usado){
+                return res.status(400).json({msg: "Ingresso já foi usado.", item})
             }
 
             ingresso.quantidade_vendida -= item.quantidade 

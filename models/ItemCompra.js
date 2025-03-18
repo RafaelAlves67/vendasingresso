@@ -24,6 +24,9 @@ const ItemCompra = sequelize.define('ItemCompra', {
     type: DataTypes.INTEGER,
     allowNull: false
   },
+  qr_code: {type: DataTypes.TEXT, allowNull: true},
+  usado: { type: DataTypes.BOOLEAN, defaultValue: false },
+
 });
 
 export default ItemCompra;

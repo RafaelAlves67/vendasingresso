@@ -42,10 +42,6 @@ export async function registerEvent(req, res) {
             return res.status(400).json({ msg: "Insira o horario final do evento!" })
         }
 
-        if (!produtor_id) {
-            return res.status(400).json({ msg: "Insira o produtor do evento!" })
-        }
-
         const houseVerify = await Local.findByPk(house_id)
         if(!houseVerify){
             return res.status(400).json({msg: "Id de local nao encontrado!"})
