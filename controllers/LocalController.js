@@ -51,7 +51,7 @@ export async function registerHouse(req,res){
             complemento: complemento
         })
 
-        return res.status(200).json({msg: "Local cadastrada!", newLocal})
+        return res.status(200).json({msg: "Local cadastrado!", newLocal})
 
 
 

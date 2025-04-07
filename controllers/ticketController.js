@@ -1,5 +1,6 @@
 import Event from "../models/event.js"
 import Ingresso from "../models/Ingresso.js"
+import ItemCompra from "../models/ItemCompra.js";
 import Lote from "../models/Lote.js"
 import { parse , isAfter, isEqual} from "date-fns";
 
@@ -155,7 +156,10 @@ export async function deleteTicket(req, res) {
             return res.status(400).json({ msg: "Id inválido" })
         }
 
+            
+        await ItemCompra.destroy({where: {ingresso_id: ingresso_id }})
         await Ingresso.destroy({ where: { ingresso_id: ingresso_id } })
+
         return res.status(200).json({ msg: "Ingresso excluido!" })
     } catch (error) {
         console.log("Erro na rota de deletar ingresso => ", error)

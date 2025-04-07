@@ -56,7 +56,6 @@ export async function criarCompra(req,res) {
                 ingresso_id: item.ingresso_id
             }
             const token = jwt.sign(payLoad, SECRET)
-            console.log(token, "AQUI")
             const qrCode = await QRCode.toDataURL(token)
         
         // Cria o item de compra, copiando o valor do ingresso para valor_unitario
