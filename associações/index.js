@@ -9,19 +9,19 @@ import Produtor from '../models/Produtor.js';
 
 export default function setupAssociations() {
 
-  Event.hasMany(Ingresso, { foreignKey: 'evento_id' });
+  Event.hasMany(Ingresso, { foreignKey: 'evento_id', onDelete: 'CASCADE' });
   Ingresso.belongsTo(Event, { foreignKey: 'evento_id' });
 
   Ingresso.hasMany(Lote, { foreignKey: 'ingresso_id' });
-  Lote.belongsTo(Ingresso, { foreignKey: 'ingresso_id' });
+  Lote.belongsTo(Ingresso, { foreignKey: 'ingresso_id', onDelete: 'CASCADE' });
 
   User.hasMany(Compra, { foreignKey: 'usuario_id' });
-  Compra.belongsTo(User, { foreignKey: 'usuario_id' });
+  Compra.belongsTo(User, { foreignKey: 'usuario_id', onDelete: 'CASCADE' });
 
   Compra.hasMany(ItemCompra, { foreignKey: 'compra_id' });
   ItemCompra.belongsTo(Compra, { foreignKey: 'compra_id' });
 
-  ItemCompra.belongsTo(Ingresso, { foreignKey: 'ingresso_id' });
+  ItemCompra.belongsTo(Ingresso, { foreignKey: 'ingresso_id', onDelete: 'CASCADE' });
   Ingresso.hasMany(ItemCompra, { foreignKey: 'ingresso_id' });
 
   

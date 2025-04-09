@@ -75,8 +75,11 @@ export async function criarCompra(req,res) {
           ingresso.quantidade_vendida += item.quantidade 
           await ingresso.save();
         }
-
+        
         compra.valor_total = valorTotal
+
+        // atualizando para aguardar pagamento
+        compra.status = 'Aguardando Pagamento'
         await compra.save()
 
         res.status(200).json({compra, itensCompra});

@@ -18,10 +18,15 @@ const Compra = sequelize.define('Compra', {
   },
 
   status: {
-    type: DataTypes.ENUM('Ativa', 'Cancelada'),
+    type: DataTypes.ENUM('Aprovada', 'Cancelada', 'Pendente', 'Aguardando Pagamento'),
     allowNull: true,
-    defaultValue: 'Ativa'
-  }
+    defaultValue: 'Pendente'
+  },
+
+  transaction_id: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
 });
 
 export default Compra;

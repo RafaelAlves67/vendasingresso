@@ -157,7 +157,7 @@ export async function deleteTicket(req, res) {
         }
 
             
-        await ItemCompra.destroy({where: {ingresso_id: ingresso_id }})
+      //  await ItemCompra.destroy({where: {ingresso_id: ingresso_id }})
         await Ingresso.destroy({ where: { ingresso_id: ingresso_id } })
 
         return res.status(200).json({ msg: "Ingresso excluido!" })
