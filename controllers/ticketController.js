@@ -74,14 +74,27 @@ export async function registerTicket(req, res) {
             }
 
             // Conversão dos valores da requisição
-            const dateIngressoStart = new Date(ticket.data_inicio_vendas); // Converte a data para Date
-            const dateIngressoEnd = new Date(ticket.data_termino_vendas); // Converte a data para Date
-            const dateNow = new Date();
+            const [yearStart, monthStart, dayStart] = ticket.data_inicio_vendas.split('-');
+            const [yearEnd, monthEnd, dayEnd] = ticket.data_termino_vendas.split('-');
 
-            // validação da data do evento
-            if (dateIngressoStart.setHours(0, 0, 0, 0) < dateNow.setHours(0, 0, 0, 0) || dateIngressoEnd.setHours(0, 0, 0, 0) < dateNow.setHours(0, 0, 0, 0)) {
+            const dateIngressoStart = new Date(Number(yearStart), Number(monthStart) - 1, Number(dayStart));
+            const dateIngressoEnd = new Date(Number(yearEnd), Number(monthEnd) - 1, Number(dayEnd));
+            const now = new Date();
+
+            const start = new Date(dateIngressoStart);
+            start.setHours(0, 0, 0, 0);
+
+            const end = new Date(dateIngressoEnd);
+            end.setHours(0, 0, 0, 0);
+
+            const today = new Date(now);
+            today.setHours(0, 0, 0, 0);
+
+            // validação da data do ingresso
+            if (start < today || end < today) {
                 return res.status(400).json({ msg: "Insira uma data válida para seu ingresso!" });
             }
+
 
             if (dateIngressoEnd < dateIngressoStart) {
                 return res.status(400).json({ msg: "A data final não pode ser antes da data inicial!" });

@@ -1,96 +1,75 @@
 import Event from "../models/event.js";
 import Local from "../models/Local.js";
 import { Op } from "sequelize";
-import { parse , isAfter, isEqual} from "date-fns";
+import multer from 'multer';
+import { uploadImageToExternalApi } from '../controllers/uploadImageController.js'; // Função para upload da imagem para a API externa
+import { parse, isAfter } from 'date-fns';
+
+// Configura o multer para armazenar a imagem na memória (não no disco)
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage }).single('image'); // Assumindo que o campo é 'image'
 
 export async function registerEvent(req, res) {
-
     try {
-        const { name, description, startTime, endTime, dateStart, dateEnd, category, subject, house_id, photos, produtor_id } = req.body
-        
-        // validações 
-        if (!name) {
-            return res.status(400).json({ msg: "Insira o nome do evento!" })
-        }
+        const { name, description, startTime, endTime, dateStart, dateEnd, category, subject, house_id, photos, produtor_id } = req.body;
 
-        if (!description) {
-            return res.status(400).json({ msg: "Insira a descrição do evento!" })
-        }
+        // Validações de campos obrigatórios
+        if (!name) return res.status(400).json({ msg: "Insira o nome do evento!" });
+        if (!description) return res.status(400).json({ msg: "Insira a descrição do evento!" });
+        if (!subject) return res.status(400).json({ msg: "Informe o assunto do evento!" });
+        if (!house_id) return res.status(400).json({ msg: "Insira o local do evento!" });
+        if (!dateStart) return res.status(400).json({ msg: "Insira o dia inicial do evento!" });
+        if (!startTime) return res.status(400).json({ msg: "Insira o horario inicial do evento!" });
+        if (!dateEnd) return res.status(400).json({ msg: "Insira o dia final do evento!" });
+        if (!endTime) return res.status(400).json({ msg: "Insira o horario final do evento!" });
 
-        if (!subject) {
-            return res.status(400).json({ msg: "Informe o assunto do evento!" })
-        }
+        // Verificação de existência do local
+        const houseVerify = await Local.findByPk(house_id);
+        if (!houseVerify) return res.status(400).json({ msg: "Id de local nao encontrado!" });
 
-        if (!house_id) {
-            return res.status(400).json({ msg: "Insira o local do evento!" })
-        }
+        // Conversão das datas
+        const [year, month, day] = dateStart.split('-');
+        const dateEventoStart = new Date(Number(year), Number(month) - 1, Number(day));
+        const dateEventoEnd = new Date(dateEnd);
+        const now = new Date();
 
-        if (!dateStart) {
-            return res.status(400).json({ msg: "Insira o dia inicial do evento!" })
-        }
+        const start = new Date(dateEventoStart);
+        start.setHours(0, 0, 0, 0);
 
-        if (!startTime) {
-            return res.status(400).json({ msg: "Insira o horario inicial do evento!" })
-        }
+        const end = new Date(dateEventoEnd);
+        end.setHours(0, 0, 0, 0);
 
-        if (!dateEnd) {
-            return res.status(400).json({ msg: "Insira o dia final do evento!" })
-        }
+        const today = new Date(now);
+        today.setHours(0, 0, 0, 0);
 
-
-        if (!endTime) {
-            return res.status(400).json({ msg: "Insira o horario final do evento!" })
-        }
-
-        const houseVerify = await Local.findByPk(house_id)
-        if(!houseVerify){
-            return res.status(400).json({msg: "Id de local nao encontrado!"})
-        }
-
-        // Conversão dos valores da requisição
-        const dateEventoStart = new Date(dateStart); // Converte a data para Date
-        const dateEventoEnd = new Date(dateEnd); // Converte a data para Date
-        const dateNow = new Date();
-
-        // validação da data do evento
-        if (dateEventoStart.setHours(0, 0, 0, 0) < dateNow.setHours(0, 0, 0, 0 ) || dateEventoEnd.setHours(0, 0, 0, 0) < dateNow.setHours(0, 0, 0, 0 )) {
+        // Validação das datas
+        if (start < today || end < today) {
             return res.status(400).json({ msg: "Insira uma data válida para seu evento!" });
         }
 
-        if(dateEnd < dateStart){
+        if (dateEnd < dateStart) {
             return res.status(400).json({ msg: "A data final não pode ser antes da data inicial!" });
         }
 
-        if (isEqual(parse(dateStart, "yyyy-MM-dd", new Date()), parse(dateEnd, "yyyy-MM-dd", new Date()))) {
+        // Verificação de horário
+        if (dateStart === dateEnd) {
             const horaInicio = parse(startTime, "HH:mm", new Date());
             const horaFinal = parse(endTime, "HH:mm", new Date());
-        
+
             if (isAfter(horaInicio, horaFinal)) {
                 return res.status(400).json({ msg: "A hora inicial não pode ser maior que a hora final em eventos no mesmo dia!" });
             }
         }
-        
 
-        // Validação de horário e conflito de eventos
+        // Verificação de conflito de eventos
         const eventByDataAndHouse = await Event.findOne({
             where: {
                 house_id: house_id,
                 [Op.or]: [
+                    { dateStart: { [Op.between]: [dateStart, dateEnd] } },
+                    { dateEnd: { [Op.between]: [dateStart, dateEnd] } },
+                    { dateStart: { [Op.lte]: dateStart }, dateEnd: { [Op.gte]: dateEnd } },
                     {
-                        // Caso 1: O evento existente começa dentro do intervalo do novo evento
-                        dateStart: { [Op.between]: [dateStart, dateEnd] }
-                    },
-                    {
-                        // Caso 2: O evento existente termina dentro do intervalo do novo evento
-                        dateEnd: { [Op.between]: [dateStart, dateEnd] }
-                    },
-                    {
-                        // Caso 3: O evento existente envolve completamente o novo evento
-                        dateStart: { [Op.lte]: dateStart },
-                        dateEnd: { [Op.gte]: dateEnd }
-                    },
-                    {
-                        // Caso 4: Evento existente atravessa a meia-noite
                         [Op.and]: [
                             { dateStart: { [Op.lte]: dateEnd } },
                             { dateEnd: { [Op.gte]: dateStart } },
@@ -100,32 +79,38 @@ export async function registerEvent(req, res) {
                 ]
             }
         });
-    
-        
+
         if (eventByDataAndHouse) {
-            return res.status(409).json({ msg: `Data indisponível!` })
+            return res.status(409).json({ msg: `Data indisponível!` });
         }
 
-        // criando o evento
+        // Verificação e upload da imagem para uma API externa
+        let uploadedImageUrl = null;
+        if (req.file) {
+            // Envia a imagem diretamente para a API externa
+            uploadedImageUrl = await uploadImageToExternalApi(req.file); // Chama a função de upload para a API externa
+        }
+
+        // Criando o evento
         const newEvent = await Event.create({
             name: name,
             description: description,
             dateStart: dateStart,
             dateEnd: dateEnd,
             house_id: house_id,
-            photos: photos,
+            photos: uploadedImageUrl || photos, // Usa a URL da imagem hospedada ou a do frontend
             startTime: startTime,
             endTime: endTime,
             subject: subject,
             category: category,
             produtor_id: produtor_id
-        })
+        });
 
-        return res.status(200).json({ msg: "Evento cadastrado!", newEvent })
+        return res.status(200).json({ msg: "Evento cadastrado!", newEvent });
 
     } catch (error) {
-        console.log("Erro com a rota de cadastro de evento => ", error)
-        return res.status(500).json(error)
+        console.log("Erro com a rota de cadastro de evento => ", error);
+        return res.status(500).json(error);
     }
 }
 
@@ -212,8 +197,8 @@ export async function editEvent(req, res) {
 
         const { evento_id, name, description, startTime, endTime, house_id, photos, subject, category, dateStart, dateEnd, produtor_id  } = req.body
         const eventEdited = { evento_id, name, description, startTime, endTime,  house_id, photos, subject, category, dateStart, dateEnd  }
-    
-        // validações 
+
+        // validações
         if (!name) {
             return res.status(400).json({ msg: "Insira o nome do evento!" })
         }

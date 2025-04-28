@@ -36,9 +36,9 @@ export async function registerHouse(req,res){
         }
 
         // validar cep
-        if(zip_code && !validateCEP(zip_code)){
+        /* if(zip_code && !validateCEP(zip_code)){
             return res.status(400).json({msg: "CEP inválido!"})
-        }
+        } */
 
         const newLocal = await Local.create({
             name: name, 
@@ -51,7 +51,7 @@ export async function registerHouse(req,res){
             complemento: complemento
         })
 
-        return res.status(200).json({msg: "Local cadastrado!", newLocal})
+        return res.status(200).json({ msg: "Local cadastrado!", id: newLocal.id, newLocal });
 
 
 
