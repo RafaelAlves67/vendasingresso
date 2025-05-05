@@ -1,5 +1,14 @@
 import express from 'express';
-import { deleteEvent, editEvent, registerEvent, getSearchEvent, getEventAll, getEventsByHouse, getEventsByStatus } from '../controllers/eventController.js';
+import {
+    deleteEvent,
+    editEvent,
+    registerEvent,
+    getSearchEvent,
+    getEventAll,
+    getEventsByHouse,
+    getEventsByStatus,
+    getEventById
+} from '../controllers/eventController.js';
 import { authToken } from '../helpers/authToken.js';
 import multer from 'multer';
 
@@ -16,6 +25,7 @@ eventRoute.put('/edit', authToken, editEvent)
 eventRoute.delete('/delete/:id', authToken, deleteEvent)
 eventRoute.get('/search/:name', authToken, getSearchEvent)
 eventRoute.get('/', getEventAll)
+eventRoute.get('/event/:id', getEventById);
 eventRoute.get('/searchHouse/:id', authToken, getEventsByHouse)
 eventRoute.get('/searchStats/:status', authToken, getEventsByStatus)
 

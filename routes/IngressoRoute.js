@@ -8,7 +8,7 @@ const ingressoRoute = express.Router()
 // rotas privada
 ingressoRoute.post('/register', authToken, registerTicket)
 ingressoRoute.put('/edit', authToken, editTicket)
-ingressoRoute.get('/ingressos', authToken, listarIngressosPorEvento)
+ingressoRoute.get('/ingressos', listarIngressosPorEvento)
 ingressoRoute.delete('/delete/:id', authToken, deleteTicket)
 
 

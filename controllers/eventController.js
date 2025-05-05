@@ -1,9 +1,20 @@
 import Event from "../models/event.js";
 import Local from "../models/Local.js";
+import Producer from '../models/Produtor.js';
 import { Op } from "sequelize";
 import multer from 'multer';
 import { uploadImageToExternalApi } from '../controllers/uploadImageController.js'; // Função para upload da imagem para a API externa
 import { parse, isAfter } from 'date-fns';
+
+Event.belongsTo(Local, {
+    foreignKey: 'house_id',
+    as: 'house', // <- este alias precisa bater com o que você usa no include
+});
+
+Event.belongsTo(Producer, {
+    foreignKey: 'produtor_id',
+    as: 'producer',
+});
 
 // Configura o multer para armazenar a imagem na memória (não no disco)
 const storage = multer.memoryStorage();
@@ -149,6 +160,36 @@ export async function getEventAll(req, res) {
     } catch (error) {
         console.log("Erro com a rota de todos eventos => ", error)
         return res.status(500).json({ msg: "Erro com a rota de todos eventos => ", error })
+    }
+}
+
+export async function getEventById(req, res) {
+    try {
+        const { id } = req.params;
+
+        const event = await Event.findByPk(id, {
+            include: [
+                {
+                    model: Local,
+                    as: 'house',
+                    attributes: { exclude: ['createdAt', 'updatedAt'] }
+                },
+                {
+                    model: Producer,
+                    as: 'producer',
+                    attributes: { exclude: ['createdAt', 'updatedAt', 'password'] } // opcional
+                }
+            ]
+        });
+
+        if (!event) {
+            return res.status(404).json({ msg: "Evento não encontrado" });
+        }
+
+        return res.status(200).json(event);
+    } catch (error) {
+        console.log("Erro ao buscar evento por ID =>", error);
+        return res.status(500).json({ msg: "Erro ao buscar evento por ID", error });
     }
 }
 

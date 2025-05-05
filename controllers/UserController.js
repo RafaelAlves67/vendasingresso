@@ -144,93 +144,89 @@ export async function loginUser(req, res){
 }
 
 // FUNÇÃO EDITAR USUARIO
-export async function editUser(req,res){
+export async function editUser(req, res) {
     try {
+        // corpo da requisição
+        const { usuario_id, name, email, password, phone, birth } = req.body;
 
-    // corpo da requisição
-    const {id , name, email, password, phone, birth} = req.body  
-    
-    // transformando em um objeto
-    const dateBirth = new Date(birth)
-    const userEdited = {id, name, email, password, phone, dateBirth}
-
-    // validações 
-    // id 
-    const user = await User.findByPk(id) 
-    if(!user){
-        return res.status(400).json({msg: "Id inválido!"})
-    }
-   
-    //nome
-    if(!name){
-        return res.status(400).json({msg: "Campo nome não pode estar vazio!"})
-    }
-    // email
-    if(!email){
-        return res.status(400).json({msg: "Campo email não pode estar vazio!"})
-    }
-
-    // senhas
-    if(!password){
-        return res.status(400).json({msg: "Campo senha não pode estar vazio!"})
-    }
-
-    // celular
-    if(!phone){
-        return res.status(400).json({msg: "Campo celular não pode estar vazio!"})
-    }
-
-    // data nascimento
-    if(!birth){
-        return res.status(400).json({msg: "Campo data nascimento não pode estar vazio!"})
-    } 
-
-    
-
-    // verificando caso não tenha editado nada no usuario
-
-    // transformando data do banco em um objeto de date javascript
-    const userDateBirth = new Date(user.birth)
-
-    // fazendo a comparação
-    const hasChanges = Object.keys(userEdited).some(key => {
-        if (key === 'dateBirth') {
-            return userDateBirth.getTime() !== dateBirth.getTime();
+        // validações
+        if (!usuario_id) {
+            return res.status(400).json({ msg: "ID do usuário é obrigatório!" });
         }
-        return user[key] !== userEdited[key];
-    });
-
-    if(!hasChanges){
-        return res.status(404).json({msg: "Não houve mudanças, altere algo!"})
-   }
-
-   // verificar se a senha está correta e criptografar
-    const salt = 12 
-    const hashPassword = await bcrypt.hash(password, salt) 
-
-   // verificar se caso a edição for email ou phone, se ja existe esse novo valor cadastrado 
-   if(user.email !== email){
-        const emailVerify = await User.findOne({where: {email: email}}) 
-
-        if(emailVerify){
-            return res.status(409).json({msg: "E-mail ja existe!"})
+        if (!name) {
+            return res.status(400).json({ msg: "Campo nome não pode estar vazio!" });
         }
-   }
-
-   if(user.phone !== phone){
-        const phoneVerify = await User.findOne({where: {phone: phone}}) 
-
-        if(phoneVerify){
-            return res.status(409).json({msg: "Esse número de celular ja está cadastrado!"})
+        if (!email) {
+            return res.status(400).json({ msg: "Campo email não pode estar vazio!" });
         }
-   }
+        if (!phone) {
+            return res.status(400).json({ msg: "Campo celular não pode estar vazio!" });
+        }
+        if (!birth) {
+            return res.status(400).json({ msg: "Campo data nascimento não pode estar vazio!" });
+        }
 
-    await User.update({name: name, email: email, password: hashPassword, phone: phone, birth: dateBirth}, {where: {id: id}})
-    return res.status(200).json({msg: "Usuário editado!", userEdited})
+        // transformar a string 'birth' em data local (sem fuso horário afetando)
+        const [year, month, day] = birth.split('-');
+        const dateBirth = new Date(Number(year), Number(month) - 1, Number(day));
+
+        const userEdited = { usuario_id, name, email, password, phone, dateBirth };
+
+        // buscar usuário atual
+        const user = await User.findByPk(usuario_id);
+        if (!user) {
+            return res.status(400).json({ msg: "Id inválido!" });
+        }
+
+        // verificar se houve mudanças
+        const userDateBirth = new Date(user.birth);
+        const hasChanges = Object.keys(userEdited).some(key => {
+            if (key === 'dateBirth') {
+                return userDateBirth.getTime() !== dateBirth.getTime();
+            }
+            return user[key] !== userEdited[key];
+        });
+
+        if (!hasChanges) {
+            return res.status(404).json({ msg: "Não houve mudanças, altere algo!" });
+        }
+
+        // verificar duplicidade de email ou celular
+        if (user.email !== email) {
+            const emailVerify = await User.findOne({ where: { email } });
+            if (emailVerify) {
+                return res.status(409).json({ msg: "E-mail já existe!" });
+            }
+        }
+
+        if (user.phone !== phone) {
+            const phoneVerify = await User.findOne({ where: { phone } });
+            if (phoneVerify) {
+                return res.status(409).json({ msg: "Esse número de celular já está cadastrado!" });
+            }
+        }
+
+        // hash da senha
+        const salt = 12;
+        const hashPassword = await bcrypt.hash(password, salt);
+
+        // atualizar
+        await User.update(
+            {
+                name,
+                email,
+                password: hashPassword,
+                phone,
+                birth: dateBirth
+            },
+            { where: { usuario_id } }
+        );
+
+        return res.status(200).json({ msg: "Usuário editado!", userEdited });
 
     } catch (error) {
-        console.log("Erro na rota de edit usuario => " , error)
-        return res.status(500).json({msg: "Erro na rota de edit usuario", error})
+        console.log("Erro na rota de edit usuario => ", error);
+        return res.status(500).json({ msg: "Erro na rota de edit usuario", error });
     }
 }
 
@@ -251,3 +247,27 @@ export async function deleterUser(req,res){
     }
 }
 
+// FUNÇÃO PARA BUSCAR USUÁRIO POR ID
+export async function getUserById(req, res) {
+    try {
+        const { id } = req.params; // Pega o ID da URL (ex: /user/123)
+
+        if (!id) {
+            return res.status(400).json({ msg: "ID do usuário não foi fornecido!" });
+        }
+
+        const user = await User.findByPk(id); // Ou use: findOne({ where: { id: id } })
+
+        if (!user) {
+            return res.status(404).json({ msg: "Usuário não encontrado!" });
+        }
+
+        // Remova a senha do retorno por segurança
+        const { password, ...userWithoutPassword } = user.dataValues;
+
+        return res.status(200).json(userWithoutPassword);
+    } catch (error) {
+        console.log("Erro ao buscar usuário por ID =>", error);
+        return res.status(500).json({ msg: "Erro ao buscar usuário por ID", error });
+    }
+}

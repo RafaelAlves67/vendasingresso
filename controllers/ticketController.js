@@ -319,22 +319,36 @@ export async function editTicket(req, res) {
 
 }
 
-export async function listarIngressosPorEvento(req,res){
+export async function listarIngressosPorEvento(req, res) {
+    const { evento_id } = req.query;
 
-    const {evento_id} =  req.body 
-    if(!evento_id){
-        return res.status(400).json({msg: "Evento não encontrado!"})
+    if (!evento_id) {
+        return res.status(400).json({ msg: "Evento não encontrado!" });
     }
 
-     // Busca todas as compras do usuário
-     const eventos = await Event.findAll({
-        where: { evento_id },
-        include: [
-            {
-                model: Ingresso,
-            },
-        ],
-    });
+    try {
+        const eventos = await Event.findAll({
+            where: { evento_id },
+            include: [
+                {
+                    model: Ingresso,
+                    required: false, // Para permitir eventos sem ingressos
+                },
+            ],
+        });
 
-    return res.status(200).json(eventos)
+        // Verifica se existem eventos e ingressos e retorna somente os ingressos
+        if (!eventos || eventos.length === 0) {
+            return res.status(404).json({ msg: "Nenhum ingresso encontrado para este evento." });
+        }
+
+        // Aqui, extraímos apenas os ingressos
+        const ingressos = eventos.flatMap(evento => evento.Ingressos);
+
+        return res.status(200).json(ingressos); // Retorna apenas os ingressos
+    } catch (error) {
+        console.error("Erro ao listar ingressos do evento:", error);
+        return res.status(500).json({ msg: "Erro ao listar ingressos do evento", error });
+    }
 }
+

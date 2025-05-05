@@ -1,19 +1,24 @@
 import Compra from "../models/Compra.js";
 import User from '../models/user.js'
 import Ingresso from '../models/Ingresso.js'
+import House from '../models/Local.js'
+import Evento from '../models/event.js'
 import ItemCompra from "../models/ItemCompra.js";
 import { Op } from "sequelize";
 import QRCode from 'qrcode'
 import jwt from "jsonwebtoken";
 const SECRET = process.env.SECRET_TICKET
 
+Evento.belongsTo(House, { foreignKey: 'house_id' });
+House.hasMany(Evento, { foreignKey: 'house_id' });
+
 // CRIAR A COMPRA
 export async function criarCompra(req,res) {
     try {
-        const {usuario_id, itens} = req.body 
+        const {usuario_id, itens} = req.body
         const itensCompra = []
 
-        
+
         // Cria a compra
         const compra = await Compra.create({
             usuario_id,
@@ -45,11 +50,11 @@ export async function criarCompra(req,res) {
                 return res.status(409).json({msg: "Ingresso esgotado!"})
             }
 
-            // checkar quantidades 
+            // checkar quantidades
             if(item.quantidade > (ingresso.quantidade_total - ingresso.quantidade_vendida)){
                 return res.status(409).json({msg: "Quantidade de ingressos indisponível!"})
             }
-            
+
             // GERAR TOKEN E QRCODE
             const payLoad = {
                 compra_id: compra.compra_id,
@@ -57,7 +62,7 @@ export async function criarCompra(req,res) {
             }
             const token = jwt.sign(payLoad, SECRET)
             const qrCode = await QRCode.toDataURL(token)
-        
+
         // Cria o item de compra, copiando o valor do ingresso para valor_unitario
        const itemCompra = await ItemCompra.create({
             compra_id: compra.compra_id,
@@ -65,17 +70,17 @@ export async function criarCompra(req,res) {
             quantidade: item.quantidade,
             valor_unitario: ingresso.valor,
             qr_code: qrCode // TOKEN JWT
-          }); 
-          
+          });
+
           itensCompra.push(itemCompra)
 
-          // atualizar valor total 
-          valorTotal += ingresso.valor * item.quantidade 
+          // atualizar valor total
+          valorTotal += ingresso.valor * item.quantidade
 
-          ingresso.quantidade_vendida += item.quantidade 
+          ingresso.quantidade_vendida += item.quantidade
           await ingresso.save();
         }
-        
+
         compra.valor_total = valorTotal
 
         // atualizando para aguardar pagamento
@@ -88,7 +93,7 @@ export async function criarCompra(req,res) {
         console.log("Erro na rota de criar uma compra => ", error)
         return res.status(500).json({ msg: "Erro na rota de criar uma compra => ", error })
     }
-    
+
 }
 
 export async function validarIngresso(req, res) {
@@ -138,34 +143,43 @@ export async function validarIngresso(req, res) {
 }
 
 // LISTA INGRESSOS
-export async function listarIngressosComprados(req,res){
+export async function listarIngressosComprados(req, res) {
     try {
-        const {usuario_id} = req.body 
+        const { usuario_id } = req.query;
 
-        const Usuario = await User.findByPk(usuario_id)
-        if(!Usuario){
-            return res.status(400).json({msg: "Usuário não encontrado!"})
+        const Usuario = await User.findByPk(usuario_id);
+        if (!Usuario) {
+            return res.status(400).json({ msg: "Usuário não encontrado!" });
         }
-    
-         // Busca todas as compras do usuário
-         const compras = await Compra.findAll({
+
+        const compras = await Compra.findAll({
             where: { usuario_id },
             include: [
                 {
                     model: ItemCompra,
                     include: [
                         {
-                            model: Ingresso, // Inclui os detalhes do ingresso
+                            model: Ingresso,
+                            include: [
+                                {
+                                    model: Evento,
+                                    include: [
+                                        {
+                                            model: House,
+                                        }
+                                    ]
+                                },
+                            ],
                         },
                     ],
                 },
             ],
         });
-    
-        return res.status(200).json(compras)
+
+        return res.status(200).json(compras);
     } catch (error) {
-        console.log("Erro na rota de listar compras por usuario => ", error)
-        return res.status(500).json({ msg: "Erro na rota de listar compras por usuario => ", error })
+        console.log("Erro na rota de listar compras por usuario => ", error);
+        return res.status(500).json({ msg: "Erro na rota de listar compras por usuario", error });
     }
 }
 
