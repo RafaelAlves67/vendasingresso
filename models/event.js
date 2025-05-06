@@ -61,10 +61,17 @@ const Event = db.define("Event", {
     type: DataTypes.JSON,
     allowNull: true // Armazena URLs das fotos do evento
   },
+
   house_id: {
     type: DataTypes.INTEGER, // Certifique-se de que este tipo é o correto
     allowNull: false, 
-}
+  },
+
+  bl_destaque: {
+    type: DataTypes.BOOLEAN,
+    allowNull: true, // Torna o campo opcional
+    defaultValue: false // Opcional: define valor padrão como false
+  },
 }, {
   tableName: "events",
   timestamps: true

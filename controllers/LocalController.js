@@ -97,9 +97,9 @@ export async function editHouse(req,res){
     } 
 
     // validar cep
-    if(zip_code && !validateCEP(zip_code)){
+    /* if(zip_code && !validateCEP(zip_code)){
         return res.status(400).json({msg: "CEP inválido!"})
-    }
+    } */
 
     const hasChanges = Object.keys(houseEdited).some(key => {
         const oldValue = houseVerify[key];  

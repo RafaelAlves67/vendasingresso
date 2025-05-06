@@ -7,7 +7,9 @@ import {
     getEventAll,
     getEventsByHouse,
     getEventsByStatus,
-    getEventById
+    getEventById,
+    getEventsByUser,
+    getEventDestaque
 } from '../controllers/eventController.js';
 import { authToken } from '../helpers/authToken.js';
 import multer from 'multer';
@@ -21,12 +23,14 @@ const eventRoute = express.Router();
 
 // Rota de registro de evento, onde você processa o formulário
 eventRoute.post('/register', authToken, upload, registerEvent);
-eventRoute.put('/edit', authToken, editEvent)
+eventRoute.put('/edit', authToken, upload, editEvent)
 eventRoute.delete('/delete/:id', authToken, deleteEvent)
 eventRoute.get('/search/:name', authToken, getSearchEvent)
 eventRoute.get('/', getEventAll)
 eventRoute.get('/event/:id', getEventById);
+eventRoute.get('/eventDestaque', getEventDestaque);
 eventRoute.get('/searchHouse/:id', authToken, getEventsByHouse)
+eventRoute.get('/eventUser/:id', authToken, getEventsByUser)
 eventRoute.get('/searchStats/:status', authToken, getEventsByStatus)
 
 export default eventRoute

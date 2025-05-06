@@ -2,7 +2,7 @@ import Event from "../models/event.js"
 import Ingresso from "../models/Ingresso.js"
 import ItemCompra from "../models/ItemCompra.js";
 import Lote from "../models/Lote.js"
-import { parse , isAfter, isEqual} from "date-fns";
+import { parse, isAfter, isEqual, startOfDay, parseISO, isBefore } from "date-fns";
 
 export async function registerTicket(req, res) {
     try {
@@ -251,15 +251,19 @@ export async function editTicket(req, res) {
             return res.status(400).json({msg: "A quantidade total deve ser maior ou igual a quantidade vendida."})
         }
 
-    
         // Conversão dos valores da requisição
-        const dateIngressoStart = new Date(ticket.data_inicio_vendas); // Converte a data para Date
-        const dateIngressoEnd = new Date(ticket.data_termino_vendas); // Converte a data para Date
-        const dateNow = new Date();
+        const dateIngressoStart = startOfDay(parseISO(ticket.data_inicio_vendas));
+        const dateIngressoEnd = startOfDay(parseISO(ticket.data_termino_vendas));
+        const today = startOfDay(new Date()); // Define hoje com hora 00:00:00
 
-        // validação da data do evento
-        if (dateIngressoStart.setHours(0, 0, 0, 0) < dateNow.setHours(0, 0, 0, 0) || dateIngressoEnd.setHours(0, 0, 0, 0) < dateNow.setHours(0, 0, 0, 0)) {
+        // Validação da data do ingresso
+        if (isBefore(dateIngressoStart, today) || isBefore(dateIngressoEnd, today)) {
             return res.status(400).json({ msg: "Insira uma data válida para seu ingresso!" });
+        }
+
+        // Verificação se a data de término é posterior à data de início
+        if (dateIngressoEnd < dateIngressoStart) {
+            return res.status(400).json({ msg: "A data final não pode ser antes da data inicial!" });
         }
 
         if (dateIngressoEnd < dateIngressoStart) {
