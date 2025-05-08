@@ -24,6 +24,7 @@ import weebhookRoute from './routes/webhookRoute.js'
 import viaCepRoute from './routes/viaCepRouter.js';
 import contatoRoute from './routes/contatoRoute.js';
 import ProdutorRoute from './routes/ProdutorRoute.js';
+import RelatoriosRoute from './routes/RelatoriosRoute.js';
 
 // chamando o express
 const app = express()
@@ -43,6 +44,7 @@ app.use('/weebhook', weebhookRoute)
 app.use('/api', viaCepRoute)
 app.use('/form', contatoRoute)
 app.use('/produtor', ProdutorRoute)
+app.use('/graficos', RelatoriosRoute)
 
 
 // ativando servidor
