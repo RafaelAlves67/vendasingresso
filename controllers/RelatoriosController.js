@@ -4,6 +4,7 @@ import Produtor from "../models/Produtor.js";
 import ItemCompra from "../models/ItemCompra.js";
 import Compra from "../models/Compra.js";
 import { Op, fn, col, literal, where } from 'sequelize';
+import { startOfYear, format, addMonths } from 'date-fns';
 
 Event.hasMany(Ingresso, { foreignKey: 'evento_id', as: 'ingressos' });
 Event.belongsTo(Produtor, { foreignKey: 'produtor_id' });
@@ -136,43 +137,43 @@ export async function getTotalArrecadado(req, res) {
     try {
         const { usuario_id } = req.params;
 
-        const resultado = await ItemCompra.findAll({
+        const resultado = await Compra.findAll({
             include: [
                 {
-                    model: Ingresso,
+                    model: ItemCompra,
                     include: [
                         {
-                            model: Event,
+                            model: Ingresso,
                             include: [
                                 {
-                                    model: Produtor,
-                                    where: {
-                                        usuario_id: usuario_id
-                                    },
+                                    model: Event,
+                                    include: [
+                                        {
+                                            model: Produtor,
+                                            where: { usuario_id: usuario_id }, // ← Aqui está a checagem correta
+                                            attributes: [],
+                                            required: true,
+                                        },
+                                    ],
                                     attributes: [],
-                                    required: true
-                                }
+                                    required: true,
+                                },
                             ],
                             attributes: [],
-                            required: true
-                        }
+                            required: true,
+                        },
                     ],
                     attributes: [],
-                    required: true
+                    required: true,
                 },
-                {
-                    model: Compra,
-                    where: {
-                        status: 'Aprovada'
-                    },
-                    attributes: [],
-                    required: true
-                }
             ],
+            where: {
+                status: 'Aprovada',
+            },
             attributes: [
-                [fn('SUM', literal('quantidade * valor_unitario')), 'total_arrecadado']
+                [fn('SUM', col('valor_total')), 'total_arrecadado'],
             ],
-            raw: true
+            raw: true,
         });
 
         const totalArrecadado = resultado[0]?.total_arrecadado || 0;
@@ -180,7 +181,7 @@ export async function getTotalArrecadado(req, res) {
         return res.status(200).json({ totalArrecadado });
 
     } catch (error) {
-        console.log("Erro ao calcular total arrecadado =>", error);
+        console.error("Erro ao calcular total arrecadado =>", error);
         return res.status(500).json({ msg: "Erro ao calcular total arrecadado", error });
     }
 }
@@ -189,45 +190,50 @@ export async function getTotalArrecadadoPorEvento(req, res) {
     try {
         const { usuario_id } = req.params;
 
-        const resultados = await ItemCompra.findAll({
+        const resultados = await Compra.findAll({
             include: [
                 {
-                    model: Ingresso,
+                    model: ItemCompra,
                     include: [
                         {
-                            model: Event,
+                            model: Ingresso,
                             include: [
                                 {
-                                    model: Produtor,
-                                    where: { usuario_id },
-                                    attributes: [],
-                                    required: true
+                                    model: Event,
+                                    include: [
+                                        {
+                                            model: Produtor,
+                                            where: { usuario_id }, // Filtro pelo usuário
+                                            attributes: [],
+                                            required: true
+                                        }
+                                    ],
+                                    attributes: ['evento_id', 'name'], // Retorna o evento_id e nome do evento
+                                    required: true,
                                 }
                             ],
-                            attributes: [], // ⚠️ evitar trazer colunas aqui
-                            required: true
+                            attributes: [],
+                            required: true,
                         }
                     ],
-                    attributes: [], // ⚠️ isso resolve o problema do GROUP BY
-                    required: true
-                },
-                {
-                    model: Compra,
-                    where: { status: 'Aprovada' },
                     attributes: [],
-                    required: true
+                    required: true,
                 }
             ],
+            where: {
+                status: 'Aprovada', // Considera apenas as compras aprovadas
+            },
             attributes: [
-                [col('Ingresso.Event.evento_id'), 'evento_id'],
-                [col('Ingresso.Event.name'), 'nome_evento'],
-                [fn('SUM', literal('quantidade * valor_unitario')), 'total_arrecadado']
+                [col('ItemCompras.Ingresso.Event.evento_id'), 'evento_id'], // Alias correto para evento_id
+                [col('ItemCompras.Ingresso.Event.name'), 'nome_evento'], // Alias correto para nome_evento
+                [fn('SUM', col('ItemCompras.valor_total')), 'total_arrecadado'], // Soma do valor_total do ItemCompra
             ],
-            group: ['Ingresso.Event.evento_id', 'Ingresso.Event.name'],
-            raw: true
+            group: ['ItemCompras.Ingresso.Event.evento_id', 'ItemCompras.Ingresso.Event.name'], // Agrupa por evento_id e nome
+            raw: true,
         });
 
         return res.status(200).json(resultados);
+
     } catch (error) {
         console.error("Erro ao calcular total arrecadado por evento =>", error);
         return res.status(500).json({ msg: "Erro ao calcular total arrecadado por evento", error });
@@ -319,17 +325,24 @@ export async function getArrecadacaoMensal(req, res) {
         const mesAtual = new Date().getMonth(); // Mês atual (0-11)
 
         // Buscar a arrecadação mensal
-        const resultados = await ItemCompra.findAll({
+        const resultados = await Compra.findAll({
             include: [
                 {
-                    model: Ingresso,
+                    model: ItemCompra,
                     include: [
                         {
-                            model: Event,
+                            model: Ingresso,
                             include: [
                                 {
-                                    model: Produtor,
-                                    where: { usuario_id },
+                                    model: Event,
+                                    include: [
+                                        {
+                                            model: Produtor,
+                                            where: { usuario_id },
+                                            attributes: [],
+                                            required: true
+                                        }
+                                    ],
                                     attributes: [],
                                     required: true
                                 }
@@ -340,26 +353,21 @@ export async function getArrecadacaoMensal(req, res) {
                     ],
                     attributes: [],
                     required: true
-                },
-                {
-                    model: Compra,
-                    where: {
-                        status: 'Aprovada',
-                        data_compra: {
-                            [Op.gte]: new Date(`${anoAtual}-01-01`), // A partir de janeiro do ano atual
-                            [Op.lt]: new Date(anoAtual, mesAtual + 1, 0).setHours(23, 59, 59, 999), // Até o final do mês atual
-                        }
-                    },
-                    attributes: [],
-                    required: true
                 }
             ],
+            where: {
+                status: 'Aprovada',
+                data_compra: {
+                    [Op.gte]: new Date(`${anoAtual}-01-01`), // A partir de janeiro do ano atual
+                    [Op.lt]: new Date(anoAtual, mesAtual + 1, 0).setHours(23, 59, 59, 999), // Até o final do mês atual
+                }
+            },
             attributes: [
-                [fn('DATE_TRUNC', 'month', col('Compra.data_compra')), 'mes'],
-                [fn('SUM', literal('quantidade * valor_unitario')), 'total_arrecadado']
+                [fn('SUM', col('valor_total')), 'total_arrecadado'],
+                [fn('TO_CHAR', col('data_compra'), 'YYYY-MM'), 'mes'], // Formato 'YYYY-MM'
             ],
-            group: [fn('DATE_TRUNC', 'month', col('Compra.data_compra'))],
-            order: [[fn('DATE_TRUNC', 'month', col('Compra.data_compra')), 'ASC']],
+            group: [literal(`TO_CHAR("Compra"."data_compra", 'YYYY-MM')`)],
+            order: [literal('mes ASC')],
             raw: true
         });
 
@@ -368,18 +376,18 @@ export async function getArrecadacaoMensal(req, res) {
         for (let i = 0; i <= mesAtual; i++) { // Até o mês atual
             const mes = new Date(anoAtual, i, 1); // Cria um objeto de data para o primeiro dia de cada mês
             mesesDoAno.push({
-                mes: mes.toISOString().split('T')[0], // Formato 'YYYY-MM-DD'
+                mes: mes.toISOString().split('T')[0].slice(0, 7), // Formato 'YYYY-MM'
                 total_arrecadado: 0 // Valor inicial 0
             });
         }
 
         // Preencher os dados de arrecadação nos meses correspondentes
         resultados.forEach(result => {
-            // Converter para formato de string 'YYYY-MM-DD'
-            const mes = new Date(result.mes).toISOString().split('T')[0];
+            // Extrair o mês no formato 'YYYY-MM'
+            const mes = result.mes;
             const index = mesesDoAno.findIndex(m => m.mes === mes);
             if (index !== -1) {
-                mesesDoAno[index].total_arrecadado = result.total_arrecadado || 0;
+                mesesDoAno[index].total_arrecadado = parseFloat(result.total_arrecadado) || 0;
             }
         });
 

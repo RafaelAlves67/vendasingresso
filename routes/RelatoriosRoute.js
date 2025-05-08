@@ -15,7 +15,7 @@ relatorioRoute.get('/listaTotalIngressosVendidos/:usuario_id', TotalIngressosVen
 relatorioRoute.get('/listaEventosAtivos/:usuario_id', listEventosAtivos);
 relatorioRoute.get('/getTotalArrecadado/:usuario_id', getTotalArrecadado);
 relatorioRoute.get('/getTotalArrecadadoPorEvento/:usuario_id', getTotalArrecadadoPorEvento);
-relatorioRoute.get('/getPercentualVendaIngressosPorEvento/:usuario_id', getPercentualVendaIngressosPorEvento);
+relatorioRoute.get('/getPercentualVendaIngressos/:usuario_id', getPercentualVendaIngressosPorEvento);
 relatorioRoute.get('/getArrecadacaoMensal/:usuario_id', getArrecadacaoMensal);
 relatorioRoute.get('/listaQuantidadeIngresso/:usuario_id', listEventos_Vendas);
 
