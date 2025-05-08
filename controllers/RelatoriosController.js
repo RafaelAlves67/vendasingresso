@@ -424,36 +424,41 @@ export async function proximosEventos(req,res){
 
 // RECEITA POR MES
 export async function receitaPorMes(req,res){
-    const {usuario_id} = req.params 
+
+    try {
+        const {usuario_id} = req.params 
 
 
-    const produtor = await Produtor.findOne({where: {usuario_id}})
-    if(!produtor){
-        return res.status(400).json({msg: "Produtor não encontrado!"})
-    }
+        const produtor = await Produtor.findOne({where: {usuario_id}})
+        if(!produtor){
+            return res.status(400).json({msg: "Produtor não encontrado!"})
+        }
+        
+        const result = await db.query(`WITH meses_do_ano AS (
+      SELECT TO_CHAR(DATE_TRUNC('year', CURRENT_DATE) + (interval '1 month' * i), 'MM') AS mes
+      FROM generate_series(0, 11) AS i
+    )
+    SELECT 
+      m.mes,
+      COALESCE(SUM(c."valor_total"), 0) AS receita_total
+    FROM 
+      meses_do_ano m
+    LEFT JOIN "Compras" c ON TO_CHAR(c."createdAt", 'MM') = m.mes
+    LEFT JOIN "ItemCompras" ic ON ic."compra_id" = c."compra_id"
+    LEFT JOIN "Ingressos" i ON i."ingresso_id" = ic."ingresso_id"
+    LEFT JOIN "events" e ON e."evento_id" = i."evento_id" AND e."status" = 'Disponível'
+    LEFT JOIN "produtores" p ON p."produtor_id" = e."produtor_id" AND p."usuario_id" = ${produtor.produtor_id}
+    GROUP BY 
+      m.mes
+    ORDER BY 
+      m.mes;
     
-    const result = await db.query(`WITH meses_do_ano AS (
-  SELECT TO_CHAR(DATE_TRUNC('year', CURRENT_DATE) + (interval '1 month' * i), 'MM') AS mes
-  FROM generate_series(0, 11) AS i
-)
-SELECT 
-  m.mes,
-  COALESCE(SUM(c."valor_total"), 0) AS receita_total
-FROM 
-  meses_do_ano m
-LEFT JOIN "Compras" c ON TO_CHAR(c."createdAt", 'MM') = m.mes
-LEFT JOIN "ItemCompras" ic ON ic."compra_id" = c."compra_id"
-LEFT JOIN "Ingressos" i ON i."ingresso_id" = ic."ingresso_id"
-LEFT JOIN "events" e ON e."evento_id" = i."evento_id" AND e."status" = 'Disponível'
-LEFT JOIN "produtores" p ON p."produtor_id" = e."produtor_id" AND p."usuario_id" = ${produtor.produtor_id}
-GROUP BY 
-  m.mes
-ORDER BY 
-  m.mes;
-
-`, {
-    type: db.QueryTypes.SELECT
-})
-
-  return res.status(200).json(result);
+    `, {
+        type: db.QueryTypes.SELECT
+    })
+    
+      return res.status(200).json(result);
+    } catch (error) {
+        return res.status(501).json({msg: "Erro na rota de relatório receita mensal => ", error})
+    }
 }
