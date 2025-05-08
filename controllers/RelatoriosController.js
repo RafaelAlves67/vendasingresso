@@ -3,7 +3,8 @@ import Ingresso from "../models/Ingresso.js";
 import Produtor from "../models/Produtor.js";
 import ItemCompra from "../models/ItemCompra.js";
 import Compra from "../models/Compra.js";
-import { Op, fn, col, literal, where } from 'sequelize';
+import { Op, fn, col, literal, where, Sequelize } from 'sequelize';
+import db from "../data/db.js";
 import { startOfYear, format, addMonths } from 'date-fns';
 
 Event.hasMany(Ingresso, { foreignKey: 'evento_id', as: 'ingressos' });
@@ -396,4 +397,63 @@ export async function getArrecadacaoMensal(req, res) {
         console.error("Erro ao calcular arrecadação mensal =>", error);
         return res.status(500).json({ msg: "Erro ao calcular arrecadação mensal", error });
     }
+}
+
+// PROXIMOS EVENTOS - FILTRADO PELO PRODUTOR
+export async function proximosEventos(req,res){
+        const {usuario_id} = req.params 
+
+        try {
+            const produtor = await Produtor.find({where: {usuario_id: usuario_id}})
+            if(!produtor){
+                return res.status(400).json({msg: "Produtor não encontrado!"})
+            }
+            
+            const eventos = await Event.findAll({where: {produtor_id: produtor.produtor_id, status: "Disponível"}}) 
+    
+            if(eventos.lenght === 0){
+                return res.status(400).json({msg: "Nenhum evento cadastrado desse produtor"})
+            }
+    
+            return res.status(200).json(eventos)   
+        } catch (error) {
+            return res.status(400).json({msg: "Erro na rota de filtrar proximos eventos => ", error})
+        }
+}
+
+
+// RECEITA POR MES
+export async function receitaPorMes(req,res){
+    const {usuario_id} = req.params 
+
+
+    const produtor = await Produtor.findOne({where: {usuario_id}})
+    if(!produtor){
+        return res.status(400).json({msg: "Produtor não encontrado!"})
+    }
+    
+    const result = await db.query(`WITH meses_do_ano AS (
+  SELECT TO_CHAR(DATE_TRUNC('year', CURRENT_DATE) + (interval '1 month' * i), 'MM') AS mes
+  FROM generate_series(0, 11) AS i
+)
+SELECT 
+  m.mes,
+  COALESCE(SUM(c."valor_total"), 0) AS receita_total
+FROM 
+  meses_do_ano m
+LEFT JOIN "Compras" c ON TO_CHAR(c."createdAt", 'MM') = m.mes
+LEFT JOIN "ItemCompras" ic ON ic."compra_id" = c."compra_id"
+LEFT JOIN "Ingressos" i ON i."ingresso_id" = ic."ingresso_id"
+LEFT JOIN "events" e ON e."evento_id" = i."evento_id" AND e."status" = 'Disponível'
+LEFT JOIN "produtores" p ON p."produtor_id" = e."produtor_id" AND p."usuario_id" = ${produtor.produtor_id}
+GROUP BY 
+  m.mes
+ORDER BY 
+  m.mes;
+
+`, {
+    type: db.QueryTypes.SELECT
+})
+
+  return res.status(200).json(result);
 }

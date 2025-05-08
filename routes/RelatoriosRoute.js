@@ -6,6 +6,7 @@ import {
     getTotalArrecadadoPorEvento,
     listEventos_Vendas,
     listEventosAtivos,
+    receitaPorMes,
     TotalIngressosVendidos,
 } from '../controllers/RelatoriosController.js';
 
@@ -18,5 +19,6 @@ relatorioRoute.get('/getTotalArrecadadoPorEvento/:usuario_id', getTotalArrecadad
 relatorioRoute.get('/getPercentualVendaIngressos/:usuario_id', getPercentualVendaIngressosPorEvento);
 relatorioRoute.get('/getArrecadacaoMensal/:usuario_id', getArrecadacaoMensal);
 relatorioRoute.get('/listaQuantidadeIngresso/:usuario_id', listEventos_Vendas);
+relatorioRoute.get('/receitaMensal/:usuario_id', receitaPorMes);
 
 export default relatorioRoute;
