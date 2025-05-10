@@ -6,6 +6,9 @@ import Compra from "../models/Compra.js";
 import { Op, fn, col, literal, where, Sequelize } from 'sequelize';
 import db from "../data/db.js";
 import { startOfYear, format, addMonths } from 'date-fns';
+import Producer from "../models/Produtor.js";
+import Usuario from "../models/user.js";
+import Local from "../models/Local.js";
 
 Event.hasMany(Ingresso, { foreignKey: 'evento_id', as: 'ingressos' });
 Event.belongsTo(Produtor, { foreignKey: 'produtor_id' });
@@ -134,6 +137,34 @@ export async function listEventosAtivos(req, res) {
     }
 }
 
+export async function listEventos(req, res) {
+    try {
+        const { usuario_id } = req.params;
+
+        // Obter a data atual
+        const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+        const totalEventos = await Event.count({
+            include: [
+                {
+                    model: Produtor,
+                    where: {
+                        usuario_id: usuario_id
+                    },
+                    required: true,
+                    attributes: []
+                },
+            ],
+        });
+
+        return res.status(200).json({ totalEventos });
+
+    } catch (error) {
+        console.log("Erro na rota de contar eventos ativos do usuário =>", error);
+        return res.status(500).json({ msg: "Erro na rota de contar eventos ativos do usuário", error });
+    }
+}
+
 export async function getTotalArrecadado(req, res) {
     try {
         const { usuario_id } = req.params;
@@ -187,57 +218,44 @@ export async function getTotalArrecadado(req, res) {
     }
 }
 
-export async function getTotalArrecadadoPorEvento(req, res) {
+// RECEITA POR EVENTO
+export async function receitaPorEvento(req, res) {
     try {
         const { usuario_id } = req.params;
 
-        const resultados = await Compra.findAll({
-            include: [
-                {
-                    model: ItemCompra,
-                    include: [
-                        {
-                            model: Ingresso,
-                            include: [
-                                {
-                                    model: Event,
-                                    include: [
-                                        {
-                                            model: Produtor,
-                                            where: { usuario_id }, // Filtro pelo usuário
-                                            attributes: [],
-                                            required: true
-                                        }
-                                    ],
-                                    attributes: ['evento_id', 'name'], // Retorna o evento_id e nome do evento
-                                    required: true,
-                                }
-                            ],
-                            attributes: [],
-                            required: true,
-                        }
-                    ],
-                    attributes: [],
-                    required: true,
-                }
-            ],
-            where: {
-                status: 'Aprovada', // Considera apenas as compras aprovadas
-            },
-            attributes: [
-                [col('ItemCompras.Ingresso.Event.evento_id'), 'evento_id'], // Alias correto para evento_id
-                [col('ItemCompras.Ingresso.Event.name'), 'nome_evento'], // Alias correto para nome_evento
-                [fn('SUM', col('ItemCompras.valor_total')), 'total_arrecadado'], // Soma do valor_total do ItemCompra
-            ],
-            group: ['ItemCompras.Ingresso.Event.evento_id', 'ItemCompras.Ingresso.Event.name'], // Agrupa por evento_id e nome
-            raw: true,
+        // Verificando se o produtor existe
+        const produtor = await Produtor.findOne({ where: { usuario_id } });
+        if (!produtor) {
+            return res.status(400).json({ msg: "Produtor não encontrado!" });
+        }
+
+        // Executando a query com a modificação no LEFT JOIN para considerar o usuario_id
+        const result = await db.query(`
+            SELECT
+                e."evento_id",
+                e."name" AS nome_evento,
+                COALESCE(SUM(c."valor_total"), 0) AS receita_total
+            FROM
+                "events" e
+            LEFT JOIN "produtores" p ON p."produtor_id" = e."produtor_id"
+                                     AND p."usuario_id" = :usuarioId
+            LEFT JOIN "Ingressos" i ON i."evento_id" = e."evento_id"
+            LEFT JOIN "ItemCompras" ic ON ic."ingresso_id" = i."ingresso_id"
+            LEFT JOIN "Compras" c ON c."compra_id" = ic."compra_id"
+            WHERE
+                c."status" = 'Aprovada'
+            GROUP BY
+                e."evento_id", e."name"
+            ORDER BY
+                receita_total DESC;
+        `, {
+            replacements: { usuarioId: usuario_id },  // Substituindo pelo usuario_id da requisição
+            type: db.QueryTypes.SELECT
         });
 
-        return res.status(200).json(resultados);
-
+        return res.status(200).json(result);
     } catch (error) {
-        console.error("Erro ao calcular total arrecadado por evento =>", error);
-        return res.status(500).json({ msg: "Erro ao calcular total arrecadado por evento", error });
+        return res.status(501).json({ msg: "Erro na rota de receita por evento", error });
     }
 }
 
@@ -399,28 +417,53 @@ export async function getArrecadacaoMensal(req, res) {
     }
 }
 
-// PROXIMOS EVENTOS - FILTRADO PELO PRODUTOR
-export async function proximosEventos(req,res){
-        const {usuario_id} = req.params 
+// PROXIMOS EVENTOS
+export async function proximosEventos(req, res) {
+    try {
+        const { usuario_id } = req.params;
 
-        try {
-            const produtor = await Produtor.find({where: {usuario_id: usuario_id}})
-            if(!produtor){
-                return res.status(400).json({msg: "Produtor não encontrado!"})
-            }
-            
-            const eventos = await Event.findAll({where: {produtor_id: produtor.produtor_id, status: "Disponível"}}) 
-    
-            if(eventos.lenght === 0){
-                return res.status(400).json({msg: "Nenhum evento cadastrado desse produtor"})
-            }
-    
-            return res.status(200).json(eventos)   
-        } catch (error) {
-            return res.status(400).json({msg: "Erro na rota de filtrar proximos eventos => ", error})
+        // Garantir que o usuário esteja tratando o id corretamente
+        const userId = parseInt(usuario_id, 10); // Convertendo para número (ou outra forma conforme o tipo do campo)
+
+        const events = await db.query(`
+            SELECT 
+                e."name" AS nome_evento,
+                e."photos"::text,  -- Convertendo o campo JSON para texto
+                e."dateStart",
+                e."startTime",
+                COALESCE(SUM(i."quantidade_vendida"), 0) AS ingressos_vendidos,
+                COALESCE(SUM(i."quantidade_total"), 0) AS ingressos_totais,
+                COALESCE(ROUND(
+                    (SUM(i."quantidade_vendida")::numeric / NULLIF(SUM(i."quantidade_total"), 0)) * 100, 2
+                ), 0) AS porcentagem_vendida
+            FROM 
+                public."events" e
+            JOIN 
+                public."produtores" p ON p."produtor_id" = e."produtor_id"
+            LEFT JOIN 
+                public."Ingressos" i ON i."evento_id" = e."evento_id"
+            WHERE 
+                p."usuario_id" = :usuario_id
+                AND e."dateStart" >= NOW()
+            GROUP BY 
+                e."evento_id", e."name", e."photos"::text, e."dateStart", e."startTime"
+            ORDER BY 
+                e."dateStart" DESC;
+        `, {
+            replacements: { usuario_id: userId }, // Passando o valor convertido
+            type: db.QueryTypes.SELECT
+        });
+
+        if (!events || events.length === 0) {
+            return res.status(404).json({ msg: `Nenhum evento futuro encontrado para o usuário ${usuario_id}` });
         }
-}
 
+        return res.status(200).json(events);
+    } catch (error) {
+        console.error("Erro ao buscar eventos futuros pelo usuário =>", error);
+        return res.status(500).json({ msg: "Erro interno ao buscar eventos futuros", error });
+    }
+}
 
 // RECEITA POR MES
 export async function receitaPorMes(req,res){
@@ -460,5 +503,97 @@ export async function receitaPorMes(req,res){
       return res.status(200).json(result);
     } catch (error) {
         return res.status(501).json({msg: "Erro na rota de relatório receita mensal => ", error})
+    }
+}
+
+//Participantes por evento
+export async function participantesPorEvento(req, res) {
+    try {
+        const { usuario_id } = req.params;
+
+        const produtor = await Produtor.findOne({ where: { usuario_id } });
+        if (!produtor) {
+            return res.status(400).json({ msg: "Produtor não encontrado!" });
+        }
+
+        const result = await db.query(`
+      SELECT 
+        e.evento_id,
+        e.name AS nome_evento,
+        e."dateStart",
+        COALESCE(SUM(i.quantidade_vendida), 0) AS total_participantes
+      FROM 
+        public.events e
+      JOIN 
+        public.produtores p ON e.produtor_id = p.produtor_id
+      LEFT JOIN 
+        public."Ingressos" i ON e.evento_id = i.evento_id
+      WHERE 
+        p.usuario_id = :usuarioId
+      GROUP BY 
+        e.evento_id, e.name, e."dateStart"
+      ORDER BY 
+        e."dateStart" DESC;
+    `, {
+            replacements: { usuarioId: usuario_id },
+            type: db.QueryTypes.SELECT
+        });
+
+        return res.status(200).json(result);
+    } catch (error) {
+        return res.status(501).json({
+            msg: "Erro na rota de participantes por evento =>",
+            error
+        });
+    }
+}
+
+// Participantes por mês (baseado na data do evento)
+export async function participantesPorMes(req, res) {
+    try {
+        const { usuario_id, id_evento } = req.params;
+
+        const produtor = await Produtor.findOne({ where: { usuario_id } });
+        if (!produtor) {
+            return res.status(400).json({ msg: "Produtor não encontrado!" });
+        }
+
+        const eventoCondition = id_evento ? `AND e.evento_id = :id_evento` : ''; // Condição para evento específico, se fornecido
+
+        const result = await db.query(`
+            WITH meses_do_ano AS (
+                SELECT TO_CHAR(DATE_TRUNC('year', CURRENT_DATE) + (interval '1 month' * i), 'MM') AS mes,
+                       TO_CHAR(DATE_TRUNC('year', CURRENT_DATE) + (interval '1 month' * i), 'Month') AS mes_nome
+                FROM generate_series(0, 11) AS i
+            )
+            SELECT 
+                m.mes,
+                TRIM(m.mes_nome) AS nome_mes,
+                COALESCE(SUM(i.quantidade_vendida), 0) AS total_participantes
+            FROM 
+                meses_do_ano m
+            LEFT JOIN events e ON TO_CHAR(e."dateStart", 'MM') = m.mes
+            LEFT JOIN "Ingressos" i ON i.evento_id = e.evento_id
+            LEFT JOIN produtores p ON p.produtor_id = e.produtor_id AND p.usuario_id = :produtorId
+            WHERE 1=1
+            ${eventoCondition}  -- Adiciona a condição do evento se fornecido
+            GROUP BY 
+                m.mes, m.mes_nome
+            ORDER BY 
+                m.mes;
+        `, {
+            replacements: {
+                produtorId: produtor.produtor_id,
+                id_evento: id_evento
+            },
+            type: db.QueryTypes.SELECT
+        });
+
+        return res.status(200).json(result);
+    } catch (error) {
+        return res.status(501).json({
+            msg: "Erro na rota de participantes por mês =>",
+            error
+        });
     }
 }
