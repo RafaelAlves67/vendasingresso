@@ -16,17 +16,17 @@ import {
 
 const relatorioRoute = express.Router();
 
-relatorioRoute.get('/listaTotalIngressosVendidos/:usuario_id', TotalIngressosVendidos);
-relatorioRoute.get('/listaEventosAtivos/:usuario_id', listEventosAtivos);
-relatorioRoute.get('/getTotalArrecadado/:usuario_id', getTotalArrecadado);
-relatorioRoute.get('/getTotalArrecadadoPorEvento/:usuario_id', receitaPorEvento);
-relatorioRoute.get('/getPercentualVendaIngressos/:usuario_id', getPercentualVendaIngressosPorEvento);
-relatorioRoute.get('/getArrecadacaoMensal/:usuario_id', getArrecadacaoMensal);
-relatorioRoute.get('/listaQuantidadeIngresso/:usuario_id', listEventos_Vendas);
-relatorioRoute.get('/receitaMensal/:usuario_id', receitaPorMes);
-relatorioRoute.get('/getProximosEventos/:usuario_id', proximosEventos);
-relatorioRoute.get('/listaEventos/:usuario_id', listEventos);
-relatorioRoute.get('/participantesPorEvento/:usuario_id', participantesPorEvento);
+relatorioRoute.get('/listaTotalIngressosVendidos/:usuario_id/:id_evento?', TotalIngressosVendidos);
+relatorioRoute.get('/listaEventosAtivos/:usuario_id/:id_evento?', listEventosAtivos);
+relatorioRoute.get('/getTotalArrecadado/:usuario_id/:id_evento?', getTotalArrecadado);
+relatorioRoute.get('/getTotalArrecadadoPorEvento/:usuario_id/:id_evento?', receitaPorEvento);
+relatorioRoute.get('/getPercentualVendaIngressos/:usuario_id/:id_evento?', getPercentualVendaIngressosPorEvento);
+relatorioRoute.get('/getArrecadacaoMensal/:usuario_id/:id_evento?', getArrecadacaoMensal);
+relatorioRoute.get('/listaQuantidadeIngresso/:usuario_id/:id_evento?', listEventos_Vendas);
+relatorioRoute.get('/receitaMensal/:usuario_id/:id_evento?', receitaPorMes);
+relatorioRoute.get('/getProximosEventos/:usuario_id/:id_evento?', proximosEventos);
+relatorioRoute.get('/listaEventos/:usuario_id/:id_evento?', listEventos);
+relatorioRoute.get('/participantesPorEvento/:usuario_id/:id_evento?', participantesPorEvento);
 relatorioRoute.get('/participantesPorMes/:usuario_id/:id_evento?', participantesPorMes);
 
 
