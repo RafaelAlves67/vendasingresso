@@ -7,10 +7,22 @@ import ItemCompra from "../models/ItemCompra.js";
 import { Op } from "sequelize";
 import QRCode from 'qrcode'
 import jwt from "jsonwebtoken";
+import db from "../data/db.js";
 const SECRET = process.env.SECRET_TICKET
 
 Evento.belongsTo(House, { foreignKey: 'house_id' });
 House.hasMany(Evento, { foreignKey: 'house_id' });
+// Compra e ItemCompra
+Compra.hasMany(ItemCompra, { foreignKey: 'compra_id' });
+ItemCompra.belongsTo(Compra, { foreignKey: 'compra_id' });
+
+// ItemCompra e Ingresso
+ItemCompra.belongsTo(Ingresso, { foreignKey: 'ingresso_id' });
+Ingresso.hasMany(ItemCompra, { foreignKey: 'ingresso_id' });
+
+// Ingresso e Evento
+Ingresso.belongsTo(Evento, { foreignKey: 'evento_id' });
+Evento.hasMany(Ingresso, { foreignKey: 'evento_id' });
 
 // CRIAR A COMPRA
 export async function criarCompra(req,res) {
@@ -147,39 +159,69 @@ export async function listarIngressosComprados(req, res) {
     try {
         const { usuario_id } = req.query;
 
-        const Usuario = await User.findByPk(usuario_id);
-        if (!Usuario) {
-            return res.status(400).json({ msg: "Usuário não encontrado!" });
+        if (!usuario_id) {
+            return res.status(400).json({ error: 'usuario_id é obrigatório' });
         }
 
-        const compras = await Compra.findAll({
-            where: { usuario_id },
-            include: [
-                {
-                    model: ItemCompra,
-                    include: [
-                        {
-                            model: Ingresso,
-                            include: [
-                                {
-                                    model: Evento,
-                                    include: [
-                                        {
-                                            model: House,
-                                        }
-                                    ]
-                                },
-                            ],
-                        },
-                    ],
-                },
-            ],
+        const userId = parseInt(usuario_id, 10); // Garante que é número
+
+        const ingressos = await db.query(`
+            SELECT 
+                c.compra_id,
+                c.data_compra,
+                c.valor_total,
+                c.status,
+                c.transaction_id,
+                c."createdAt" AS compra_created_at,
+                c."updatedAt" AS compra_updated_at,
+                c.usuario_id,
+
+                ic."itemCompra_id",
+                ic.quantidade,
+                ic.valor_unitario,
+                ic.qr_code,
+                ic.usado,
+                ic."createdAt" AS item_compra_created_at,
+                ic."updatedAt" AS item_compra_updated_at,
+
+                i.ingresso_id,
+                i.titulo AS titulo_ingresso,
+                i.valor,
+                i.meia_entrada,
+                i.descricao,
+
+                e.name AS nome_evento,
+                e.evento_id,
+                e."photos",
+                e."dateStart",
+                e."startTime",
+
+                l.name AS nome_local,
+                l.address,
+                l.city,
+                l.state
+
+            FROM public."Compras" c
+            JOIN public."ItemCompras" ic ON ic.compra_id = c.compra_id
+            JOIN public."Ingressos" i ON i.ingresso_id = ic.ingresso_id
+            JOIN public.events e ON e.evento_id = i.evento_id
+            JOIN public."Local" l ON l.house_id = e.house_id
+            WHERE c.usuario_id = :usuario_id
+            ORDER BY c.data_compra DESC;
+        `, {
+            replacements: { usuario_id: userId },
+            type: db.Sequelize.QueryTypes.SELECT
         });
 
-        return res.status(200).json(compras);
+        if (!ingressos || ingressos.length === 0) {
+            return res.status(404).json({ msg: `Nenhum ingresso encontrado para o usuário ${usuario_id}` });
+        }
+
+        return res.status(200).json(ingressos);
+
     } catch (error) {
-        console.log("Erro na rota de listar compras por usuario => ", error);
-        return res.status(500).json({ msg: "Erro na rota de listar compras por usuario", error });
+        console.error('Erro ao listar ingressos:', error);
+        return res.status(500).json({ error: 'Erro ao buscar ingressos comprados', detalhes: error.message });
     }
 }
 
