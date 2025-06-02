@@ -61,8 +61,6 @@ export async function registerHouse(req,res){
     }
 }
 
-import { Op } from "sequelize";
-
 export async function editHouse(req, res) {
     try {
         const {
