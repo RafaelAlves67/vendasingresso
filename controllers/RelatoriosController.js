@@ -242,44 +242,52 @@ export async function receitaPorEvento(req, res) {
     try {
         const { usuario_id, id_evento } = req.params;
 
-        // Verificando se o produtor existe
         const produtor = await Produtor.findOne({ where: { usuario_id } });
         if (!produtor) {
             return res.status(400).json({ msg: "Produtor não encontrado!" });
         }
 
-        const eventoIdValido = id_evento && id_evento !== "null" && id_evento !== "undefined" && id_evento !== ""
-            ? Number(id_evento)
-            : null;
+        const eventoIdValido =
+            id_evento && id_evento !== "null" && id_evento !== "undefined" && id_evento !== ""
+                ? Number(id_evento)
+                : null;
 
-        const whereEvento = eventoIdValido ? `AND e."evento_id" = :idEvento` : "";
-
-        const result = await db.query(`
-            SELECT
-                e."evento_id",
-                e."name" AS nome_evento,
-                COALESCE(SUM(c."valor_total"), 0) AS receita_total
-            FROM
-                "events" e
-            INNER JOIN "produtores" p ON p."produtor_id" = e."produtor_id"
-                AND p."usuario_id" = :usuarioId
-            LEFT JOIN "Ingressos" i ON i."evento_id" = e."evento_id"
-            LEFT JOIN "ItemCompras" ic ON ic."ingresso_id" = i."ingresso_id"
-            LEFT JOIN "Compras" c ON c."compra_id" = ic."compra_id"
-            WHERE
-                c."status" = 'Aprovada'
-                ${whereEvento}
-            GROUP BY
-                e."evento_id", e."name"
-            ORDER BY
-                receita_total DESC;
-        `, {
-            replacements: {
-                usuarioId: usuario_id,
-                idEvento: eventoIdValido,
-            },
-            type: db.QueryTypes.SELECT
-        });
+        const result = await db.query(
+            `
+      SELECT
+        e."evento_id",
+        e."name" AS nome_evento,
+        COALESCE(SUM(c."valor_total"), 0) AS receita_total
+      FROM
+        "events" e
+      INNER JOIN "produtores" p ON p."produtor_id" = e."produtor_id"
+        AND p."usuario_id" = :usuarioId
+      LEFT JOIN (
+        SELECT
+          c."compra_id",
+          c."valor_total",
+          i."evento_id"
+        FROM "Compras" c
+        INNER JOIN "ItemCompras" ic ON ic."compra_id" = c."compra_id"
+        INNER JOIN "Ingressos" i ON i."ingresso_id" = ic."ingresso_id"
+        WHERE c."status" = 'Aprovada'
+        GROUP BY c."compra_id", c."valor_total", i."evento_id"
+      ) c ON c."evento_id" = e."evento_id"
+      WHERE
+        (:idEvento IS NULL OR e."evento_id" = :idEvento)
+      GROUP BY
+        e."evento_id", e."name"
+      ORDER BY
+        receita_total DESC;
+      `,
+            {
+                replacements: {
+                    usuarioId: usuario_id,
+                    idEvento: eventoIdValido,
+                },
+                type: db.QueryTypes.SELECT,
+            }
+        );
 
         return res.status(200).json(result);
 
