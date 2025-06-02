@@ -61,74 +61,95 @@ export async function registerHouse(req,res){
     }
 }
 
-export async function editHouse(req,res){
+import { Op } from "sequelize";
+
+export async function editHouse(req, res) {
     try {
-        const {house_id,name,  address, city, state, zip_code, website, number, complemento} = req.body 
+        const {
+            house_id,
+            name,
+            address,
+            city,
+            state,
+            zip_code,
+            website,
+            number,
+            complemento
+        } = req.body;
 
-    // validações
-    const houseEdited = {house_id, name,  address, city, state, zip_code, website, number, complemento}
-    // verificar se id está correto
-    const houseVerify = await Local.findByPk(house_id)
-    if(!houseVerify){
-        return res.status(400).json({msg: "Id house inválido!"})
-    }
+        // Validações básicas
+        if (!house_id) {
+            return res.status(400).json({ msg: "ID do local é obrigatório!" });
+        }
 
-    //nome
-    if(!name){
-        return res.status(400).json({msg: "Campo nome não pode estar vazio!"})
-    }
+        const houseVerify = await Local.findByPk(house_id);
+        if (!houseVerify) {
+            return res.status(400).json({ msg: "Id house inválido!" });
+        }
 
+        if (!name) {
+            return res.status(400).json({ msg: "Campo nome não pode estar vazio!" });
+        }
 
-    // endereço
-    if(!address){
-        return res.status(400).json({msg: "Campo endereço não pode estar vazio!"})
-    } 
-    // cidade
-    if(!city){
-        return res.status(400).json({msg: "Campo cidade não pode estar vazio!"})
-    } 
-    // estado
-    if(!state){
-        return res.status(400).json({msg: "Campo estado não pode estar vazio!"})
-    } 
-    // CEP
-    if(!zip_code){
-        return res.status(400).json({msg: "Campo CEP não pode estar vazio!"})
-    } 
+        if (!address) {
+            return res.status(400).json({ msg: "Campo endereço não pode estar vazio!" });
+        }
 
-    // validar cep
-    /* if(zip_code && !validateCEP(zip_code)){
-        return res.status(400).json({msg: "CEP inválido!"})
-    } */
+        if (!city) {
+            return res.status(400).json({ msg: "Campo cidade não pode estar vazio!" });
+        }
 
-    const hasChanges = Object.keys(houseEdited).some(key => {
-        const oldValue = houseVerify[key];  
-        let newValue = houseEdited[key];
-         
-        // Considerar remoção do campo como alteração
-        return newValue !== undefined && String(oldValue) !== String(newValue);
-    });
-    
+        if (!state) {
+            return res.status(400).json({ msg: "Campo estado não pode estar vazio!" });
+        }
 
-    if(!hasChanges){
-        return res.status(400).json({msg: "Não houve mudanças, altere algo!"})
-   }
+        if (!zip_code) {
+            return res.status(400).json({ msg: "Campo CEP não pode estar vazio!" });
+        }
 
-   if(zip_code){
-    const cepVerify = await Local.findOne({where: {zip_code: zip_code}})
-    if(cepVerify){
-        return res.status(409).json({msg: "CEP já cadastrado!"})
-    }
-}
+        // Verificar se houve mudanças
+        const houseEdited = {
+            name,
+            address,
+            city,
+            state,
+            zip_code,
+            website,
+            number,
+            complemento
+        };
 
-   
-   await Local.update({name: name, address: address, city: city, state: state, zip_code: zip_code, website: website, number: number, complemento: complemento}, {where: {house_id: house_id}})
-   return res.status(200).json({msg: "Local editada!", houseEdited})
-     
+        const hasChanges = Object.keys(houseEdited).some(key => {
+            const oldValue = houseVerify[key];
+            const newValue = houseEdited[key];
+            return String(oldValue ?? '') !== String(newValue ?? '');
+        });
+
+        // Se não houve alterações, retorna sucesso sem atualizar
+        if (!hasChanges) {
+            return res.json({ msg: "Local atualizado com sucesso (sem alterações)." });
+        }
+
+        // Verificar se o novo CEP já está em uso por outro local
+        const cepVerify = await Local.findOne({
+            where: {
+                zip_code,
+                house_id: { [Op.ne]: house_id }
+            }
+        });
+
+        if (cepVerify) {
+            return res.status(409).json({ msg: "CEP já cadastrado!" });
+        }
+
+        // Atualizar o local
+        await Local.update(houseEdited, { where: { house_id } });
+
+        return res.json({ msg: "Local atualizado com sucesso!" });
+
     } catch (error) {
-        console.log("Erro na rota de edit de Local => " , error)
-        return res.status(500).json({msg: "Erro na rota de edit de Local => ", error})
-
+        console.error("Erro ao editar local:", error);
+        return res.status(500).json({ msg: "Erro ao editar local." });
     }
 }
 
