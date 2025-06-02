@@ -25,87 +25,93 @@ Ingresso.belongsTo(Evento, { foreignKey: 'evento_id' });
 Evento.hasMany(Ingresso, { foreignKey: 'evento_id' });
 
 // CRIAR A COMPRA
-export async function criarCompra(req,res) {
+export async function criarCompra(req, res) {
     try {
-        const {usuario_id, itens} = req.body
-        const itensCompra = []
+        const { usuario_id, itens } = req.body;
+        const itensCompra = [];
 
+        // Verifica se o usuário existe
+        const user = await User.findByPk(usuario_id);
+        if (!user) {
+            return res.status(400).json({ msg: "Usuário não encontrado!" });
+        }
 
-        // Cria a compra
+        // Cria a compra inicial (valor e status serão atualizados depois)
         const compra = await Compra.create({
             usuario_id,
-            valor_total: 0, // Inicialmente zero, será atualizado
+            valor_total: 0,
         });
 
-        let valorTotal = 0
+        let valorTotal = 0;
 
-        // checkar se o usuario existe
-        const user = await User.findByPk(usuario_id)
-        if(!user){
-            return res.status(400).json({msg: "Usuário não encontrado!"})
-        }
-
-        // checkar os itens
-        for(let item of itens){
-            // checkar se o ingresso existe
-            const ingresso = await Ingresso.findByPk(item.ingresso_id)
-            if(!ingresso){
-                return res.status(400).json({msg: "Ingresso não encontrado!"})
+        for (let item of itens) {
+            const ingresso = await Ingresso.findByPk(item.ingresso_id);
+            if (!ingresso) {
+                return res.status(400).json({ msg: "Ingresso não encontrado!" });
             }
 
-            // checkar se a quantidade maxima por compra está permitida
-            if(ingresso.quantidade_maxima_por_compra < item.quantidade){
-                return res.status(400).json({msg: "Quantidade maxima por compra não permitida!"})
-            }
-            // checkar se evento ja está esgotado
-            if(ingresso.quantidade_total < ingresso.quantidade_vendida){
-                return res.status(409).json({msg: "Ingresso esgotado!"})
+            if (ingresso.quantidade_maxima_por_compra < item.quantidade) {
+                return res.status(400).json({ msg: "Quantidade máxima por compra não permitida!" });
             }
 
-            // checkar quantidades
-            if(item.quantidade > (ingresso.quantidade_total - ingresso.quantidade_vendida)){
-                return res.status(409).json({msg: "Quantidade de ingressos indisponível!"})
+            if (ingresso.quantidade_total <= ingresso.quantidade_vendida) {
+                return res.status(409).json({ msg: "Ingresso esgotado!" });
             }
 
-            // GERAR TOKEN E QRCODE
+            if (item.quantidade > (ingresso.quantidade_total - ingresso.quantidade_vendida)) {
+                return res.status(409).json({ msg: "Quantidade de ingressos indisponível!" });
+            }
+
+            // Gera token e QR Code
             const payLoad = {
                 compra_id: compra.compra_id,
-                ingresso_id: item.ingresso_id
-            }
-            const token = jwt.sign(payLoad, SECRET)
-            const qrCode = await QRCode.toDataURL(token)
+                ingresso_id: item.ingresso_id,
+            };
+            const token = jwt.sign(payLoad, SECRET);
+            const qrCode = await QRCode.toDataURL(token);
 
-        // Cria o item de compra, copiando o valor do ingresso para valor_unitario
-       const itemCompra = await ItemCompra.create({
-            compra_id: compra.compra_id,
-            ingresso_id: item.ingresso_id,
-            quantidade: item.quantidade,
-            valor_unitario: ingresso.valor,
-            qr_code: qrCode // TOKEN JWT
-          });
+            // Cria item da compra
+            const itemCompra = await ItemCompra.create({
+                compra_id: compra.compra_id,
+                ingresso_id: item.ingresso_id,
+                quantidade: item.quantidade,
+                valor_unitario: ingresso.valor,
+                qr_code: qrCode,
+            });
 
-          itensCompra.push(itemCompra)
+            itensCompra.push(itemCompra);
 
-          // atualizar valor total
-          valorTotal += ingresso.valor * item.quantidade
+            // Atualiza o valor total
+            valorTotal += ingresso.valor * item.quantidade;
 
-          ingresso.quantidade_vendida += item.quantidade
-          await ingresso.save();
+            // Atualiza quantidade vendida
+            ingresso.quantidade_vendida += item.quantidade;
+            await ingresso.save();
         }
 
-        compra.valor_total = valorTotal
+        // Atualiza o valor total na compra
+        compra.valor_total = valorTotal;
 
-        // atualizando para aguardar pagamento
-        compra.status = 'Aguardando Pagamento'
-        await compra.save()
+        if (valorTotal === 0) {
+            // Compra gratuita — não passa pela Pagar.me
+            compra.status = 'Pago';
+        } else {
+            // Compra com valor — segue para pagamento
+            compra.status = 'Aguardando Pagamento';
 
-        res.status(200).json({compra, itensCompra});
+            // Aqui você pode chamar a função que integra com a Pagar.me
+            // Exemplo fictício:
+            // await iniciarPagamentoPagarme(compra, user, itensCompra);
+        }
+
+        await compra.save();
+
+        res.status(200).json({ compra, itensCompra });
 
     } catch (error) {
-        console.log("Erro na rota de criar uma compra => ", error)
-        return res.status(500).json({ msg: "Erro na rota de criar uma compra => ", error })
+        console.log("Erro na rota de criar uma compra => ", error);
+        return res.status(500).json({ msg: "Erro na rota de criar uma compra => ", error });
     }
-
 }
 
 export async function validarIngresso(req, res) {
