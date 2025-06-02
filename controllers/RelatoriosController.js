@@ -238,7 +238,6 @@ export async function receitaPorEvento(req, res) {
             return res.status(400).json({ msg: "Produtor não encontrado!" });
         }
 
-        // Validação do id_evento
         const eventoIdValido = id_evento && id_evento !== "null" && id_evento !== "undefined" && id_evento !== ""
             ? Number(id_evento)
             : null;
@@ -246,25 +245,25 @@ export async function receitaPorEvento(req, res) {
         const whereEvento = eventoIdValido ? `AND e."evento_id" = :idEvento` : "";
 
         const result = await db.query(`
-			SELECT
-				e."evento_id",
-				e."name" AS nome_evento,
-				COALESCE(SUM(c."valor_total"), 0) AS receita_total
-			FROM
-				"events" e
-			LEFT JOIN "produtores" p ON p."produtor_id" = e."produtor_id"
-									 AND p."usuario_id" = :usuarioId
-			LEFT JOIN "Ingressos" i ON i."evento_id" = e."evento_id"
-			LEFT JOIN "ItemCompras" ic ON ic."ingresso_id" = i."ingresso_id"
-			LEFT JOIN "Compras" c ON c."compra_id" = ic."compra_id"
-			WHERE
-				c."status" = 'Aprovada'
-				${whereEvento}
-			GROUP BY
-				e."evento_id", e."name"
-			ORDER BY
-				receita_total DESC;
-		`, {
+            SELECT
+                e."evento_id",
+                e."name" AS nome_evento,
+                COALESCE(SUM(c."valor_total"), 0) AS receita_total
+            FROM
+                "events" e
+            INNER JOIN "produtores" p ON p."produtor_id" = e."produtor_id"
+                AND p."usuario_id" = :usuarioId
+            LEFT JOIN "Ingressos" i ON i."evento_id" = e."evento_id"
+            LEFT JOIN "ItemCompras" ic ON ic."ingresso_id" = i."ingresso_id"
+            LEFT JOIN "Compras" c ON c."compra_id" = ic."compra_id"
+            WHERE
+                c."status" = 'Aprovada'
+                ${whereEvento}
+            GROUP BY
+                e."evento_id", e."name"
+            ORDER BY
+                receita_total DESC;
+        `, {
             replacements: {
                 usuarioId: usuario_id,
                 idEvento: eventoIdValido,
@@ -615,18 +614,17 @@ export async function participantesPorMes(req, res) {
             return res.status(400).json({ msg: "Produtor não encontrado!" });
         }
 
-        // Verifica se id_evento é válido (não nulo, indefinido ou vazio)
         const eventoIdValido = id_evento && id_evento !== "null" && id_evento !== "undefined" && id_evento !== ""
             ? Number(id_evento)
             : null;
 
-        // Condição de filtro para evento, caso o id_evento seja válido
         const eventoCondition = eventoIdValido ? `AND e.evento_id = :id_evento` : '';
 
         const result = await db.query(`
             WITH meses_do_ano AS (
-                SELECT TO_CHAR(DATE_TRUNC('year', CURRENT_DATE) + (interval '1 month' * i), 'MM') AS mes,
-                       TO_CHAR(DATE_TRUNC('year', CURRENT_DATE) + (interval '1 month' * i), 'Month') AS mes_nome
+                SELECT 
+                    TO_CHAR(DATE_TRUNC('year', CURRENT_DATE) + (interval '1 month' * i), 'MM') AS mes,
+                    TO_CHAR(DATE_TRUNC('year', CURRENT_DATE) + (interval '1 month' * i), 'Month') AS mes_nome
                 FROM generate_series(0, 11) AS i
             )
             SELECT 
@@ -636,10 +634,10 @@ export async function participantesPorMes(req, res) {
             FROM 
                 meses_do_ano m
             LEFT JOIN events e ON TO_CHAR(e."dateStart", 'MM') = m.mes
+            INNER JOIN produtores p ON p.produtor_id = e.produtor_id AND p.usuario_id = :produtorId
             LEFT JOIN "Ingressos" i ON i.evento_id = e.evento_id
-            LEFT JOIN produtores p ON p.produtor_id = e.produtor_id AND p.usuario_id = :produtorId
             WHERE 1=1
-            ${eventoCondition}  -- Condição do evento se fornecido
+            ${eventoCondition}
             GROUP BY 
                 m.mes, m.mes_nome
             ORDER BY 
@@ -647,7 +645,7 @@ export async function participantesPorMes(req, res) {
         `, {
             replacements: {
                 produtorId: produtor.produtor_id,
-                id_evento: eventoIdValido  // Passa o evento_id válido ou null
+                id_evento: eventoIdValido
             },
             type: db.QueryTypes.SELECT
         });
