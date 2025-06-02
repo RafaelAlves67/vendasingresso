@@ -386,65 +386,58 @@ export async function getArrecadacaoMensal(req, res) {
     try {
         const { usuario_id, id_evento } = req.params;
 
-        const eventoIdValido = id_evento && id_evento !== "null" && id_evento !== "undefined" && id_evento !== ""
-            ? Number(id_evento)
-            : null;
+        const produtor = await Produtor.findOne({ where: { usuario_id } });
+        if (!produtor) {
+            return res.status(400).json({ msg: "Produtor não encontrado!" });
+        }
 
-        const eventoFilter = eventoIdValido ? { evento_id: eventoIdValido } : {};
+        const eventoIdValido =
+            id_evento && id_evento !== "null" && id_evento !== "undefined" && id_evento !== ""
+                ? Number(id_evento)
+                : null;
 
         const anoAtual = new Date().getFullYear();
         const mesAtual = new Date().getMonth();
 
-        const resultados = await Compra.findAll({
-            include: [
-                {
-                    model: ItemCompra,
-                    include: [
-                        {
-                            model: Ingresso,
-                            include: [
-                                {
-                                    model: Event,
-                                    where: {
-                                        ...eventoFilter
-                                    },
-                                    include: [
-                                        {
-                                            model: Produtor,
-                                            where: { usuario_id },
-                                            attributes: [],
-                                            required: true
-                                        }
-                                    ],
-                                    attributes: [],
-                                    required: true
-                                }
-                            ],
-                            attributes: [],
-                            required: true
-                        }
-                    ],
-                    attributes: [],
-                    required: true
-                }
-            ],
-            where: {
-                status: 'Aprovada',
-                data_compra: {
-                    [Op.gte]: new Date(`${anoAtual}-01-01`),
-                    [Op.lt]: new Date(anoAtual, mesAtual + 1, 0).setHours(23, 59, 59, 999),
-                }
-            },
-            attributes: [
-                [fn('SUM', col('valor_total')), 'total_arrecadado'],
-                [fn('TO_CHAR', col('data_compra'), 'YYYY-MM'), 'mes'],
-            ],
-            group: [literal(`TO_CHAR("Compra"."data_compra", 'YYYY-MM')`)],
-            order: [literal('mes ASC')],
-            raw: true
-        });
+        const dataInicio = `${anoAtual}-01-01`;
+        const dataFim = new Date(anoAtual, mesAtual + 1, 0, 23, 59, 59, 999).toISOString();
 
-        // Preenche todos os meses até o mês atual
+        const result = await db.query(
+            `
+            SELECT
+                TO_CHAR(sub.data_compra, 'YYYY-MM') AS mes,
+                SUM(sub.valor_total) AS total_arrecadado
+            FROM (
+                SELECT DISTINCT ON (c."compra_id")
+                    c."compra_id",
+                    c."valor_total",
+                    c."data_compra"
+                FROM "Compras" c
+                INNER JOIN "ItemCompras" ic ON ic."compra_id" = c."compra_id"
+                INNER JOIN "Ingressos" i ON i."ingresso_id" = ic."ingresso_id"
+                INNER JOIN "events" e ON e."evento_id" = i."evento_id"
+                INNER JOIN "produtores" p ON p."produtor_id" = e."produtor_id"
+                WHERE c."status" = 'Aprovada'
+                  AND p."usuario_id" = :usuarioId
+                  AND c."data_compra" >= :dataInicio
+                  AND c."data_compra" <= :dataFim
+                  AND (:idEvento IS NULL OR e."evento_id" = :idEvento)
+            ) sub
+            GROUP BY TO_CHAR(sub.data_compra, 'YYYY-MM')
+            ORDER BY mes ASC;
+            `,
+            {
+                replacements: {
+                    usuarioId: usuario_id,
+                    idEvento: eventoIdValido,
+                    dataInicio,
+                    dataFim
+                },
+                type: db.QueryTypes.SELECT
+            }
+        );
+
+        // Preencher os meses ausentes
         const mesesDoAno = [];
         for (let i = 0; i <= mesAtual; i++) {
             const mes = new Date(anoAtual, i, 1);
@@ -454,16 +447,16 @@ export async function getArrecadacaoMensal(req, res) {
             });
         }
 
-        resultados.forEach(result => {
-            const index = mesesDoAno.findIndex(m => m.mes === result.mes);
+        result.forEach((item) => {
+            const index = mesesDoAno.findIndex(m => m.mes === item.mes);
             if (index !== -1) {
-                mesesDoAno[index].total_arrecadado = parseFloat(result.total_arrecadado) || 0;
+                mesesDoAno[index].total_arrecadado = parseFloat(item.total_arrecadado) || 0;
             }
         });
 
         return res.status(200).json(mesesDoAno);
     } catch (error) {
-        console.error("Erro ao calcular arrecadação mensal =>", error);
+        console.error("Erro na rota de arrecadação mensal =>", error);
         return res.status(500).json({ msg: "Erro ao calcular arrecadação mensal", error });
     }
 }
