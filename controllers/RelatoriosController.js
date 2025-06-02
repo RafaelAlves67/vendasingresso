@@ -172,11 +172,13 @@ export async function getTotalArrecadado(req, res) {
         const { usuario_id, id_evento } = req.params;
 
         // Trata id_evento para evitar filtro inválido
-        const eventoIdValido = id_evento && id_evento !== "null" && id_evento !== "undefined" && id_evento !== ""
-            ? Number(id_evento)
-            : null;
+        const eventoIdValido =
+            id_evento && id_evento !== "null" && id_evento !== "undefined" && id_evento !== ""
+                ? Number(id_evento)
+                : null;
 
-        const resultado = await Compra.findAll({
+        // Busca apenas compras únicas, mesmo que tenham vários itens
+        const compras = await Compra.findAll({
             include: [
                 {
                     model: ItemCompra,
@@ -212,19 +214,24 @@ export async function getTotalArrecadado(req, res) {
             where: {
                 status: 'Aprovada',
             },
-            attributes: [
-                [fn('SUM', col('valor_total')), 'total_arrecadado'],
-            ],
+            attributes: ['id', 'valor_total'],
             raw: true,
         });
 
-        const totalArrecadado = resultado[0]?.total_arrecadado || 0;
+        // Soma apenas os valores únicos das compras
+        const totalArrecadado = compras.reduce(
+            (acc, compra) => acc + Number(compra.valor_total),
+            0
+        );
 
         return res.status(200).json({ totalArrecadado });
 
     } catch (error) {
         console.error("Erro ao calcular total arrecadado =>", error);
-        return res.status(500).json({ msg: "Erro ao calcular total arrecadado", error });
+        return res.status(500).json({
+            msg: "Erro ao calcular total arrecadado",
+            error,
+        });
     }
 }
 
