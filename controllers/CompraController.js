@@ -25,93 +25,87 @@ Ingresso.belongsTo(Evento, { foreignKey: 'evento_id' });
 Evento.hasMany(Ingresso, { foreignKey: 'evento_id' });
 
 // CRIAR A COMPRA
-export async function criarCompra(req, res) {
+export async function criarCompra(req,res) {
     try {
-        const { usuario_id, itens } = req.body;
-        const itensCompra = [];
+        const {usuario_id, itens} = req.body
+        const itensCompra = []
 
-        // Verifica se o usuário existe
-        const user = await User.findByPk(usuario_id);
-        if (!user) {
-            return res.status(400).json({ msg: "Usuário não encontrado!" });
-        }
 
-        // Cria a compra inicial (valor e status serão atualizados depois)
+        // Cria a compra
         const compra = await Compra.create({
             usuario_id,
-            valor_total: 0,
+            valor_total: 0, // Inicialmente zero, será atualizado
         });
 
-        let valorTotal = 0;
+        let valorTotal = 0
 
-        for (let item of itens) {
-            const ingresso = await Ingresso.findByPk(item.ingresso_id);
-            if (!ingresso) {
-                return res.status(400).json({ msg: "Ingresso não encontrado!" });
+        // checkar se o usuario existe
+        const user = await User.findByPk(usuario_id)
+        if(!user){
+            return res.status(400).json({msg: "Usuário não encontrado!"})
+        }
+
+        // checkar os itens
+        for(let item of itens){
+            // checkar se o ingresso existe
+            const ingresso = await Ingresso.findByPk(item.ingresso_id)
+            if(!ingresso){
+                return res.status(400).json({msg: "Ingresso não encontrado!"})
             }
 
-            if (ingresso.quantidade_maxima_por_compra < item.quantidade) {
-                return res.status(400).json({ msg: "Quantidade máxima por compra não permitida!" });
+            // checkar se a quantidade maxima por compra está permitida
+            if(ingresso.quantidade_maxima_por_compra < item.quantidade){
+                return res.status(400).json({msg: "Quantidade maxima por compra não permitida!"})
+            }
+            // checkar se evento ja está esgotado
+            if(ingresso.quantidade_total < ingresso.quantidade_vendida){
+                return res.status(409).json({msg: "Ingresso esgotado!"})
             }
 
-            if (ingresso.quantidade_total <= ingresso.quantidade_vendida) {
-                return res.status(409).json({ msg: "Ingresso esgotado!" });
+            // checkar quantidades
+            if(item.quantidade > (ingresso.quantidade_total - ingresso.quantidade_vendida)){
+                return res.status(409).json({msg: "Quantidade de ingressos indisponível!"})
             }
 
-            if (item.quantidade > (ingresso.quantidade_total - ingresso.quantidade_vendida)) {
-                return res.status(409).json({ msg: "Quantidade de ingressos indisponível!" });
-            }
-
-            // Gera token e QR Code
+            // GERAR TOKEN E QRCODE
             const payLoad = {
                 compra_id: compra.compra_id,
-                ingresso_id: item.ingresso_id,
-            };
-            const token = jwt.sign(payLoad, SECRET);
-            const qrCode = await QRCode.toDataURL(token);
+                ingresso_id: item.ingresso_id
+            }
+            const token = jwt.sign(payLoad, SECRET)
+            const qrCode = await QRCode.toDataURL(token)
 
-            // Cria item da compra
+            // Cria o item de compra, copiando o valor do ingresso para valor_unitario
             const itemCompra = await ItemCompra.create({
                 compra_id: compra.compra_id,
                 ingresso_id: item.ingresso_id,
                 quantidade: item.quantidade,
                 valor_unitario: ingresso.valor,
-                qr_code: qrCode,
+                qr_code: qrCode // TOKEN JWT
             });
 
-            itensCompra.push(itemCompra);
+            itensCompra.push(itemCompra)
 
-            // Atualiza o valor total
-            valorTotal += ingresso.valor * item.quantidade;
+            // atualizar valor total
+            valorTotal += ingresso.valor * item.quantidade
 
-            // Atualiza quantidade vendida
-            ingresso.quantidade_vendida += item.quantidade;
+            ingresso.quantidade_vendida += item.quantidade
             await ingresso.save();
         }
 
-        // Atualiza o valor total na compra
-        compra.valor_total = valorTotal;
+        compra.valor_total = valorTotal
 
-        if (valorTotal === 0) {
-            // Compra gratuita — não passa pela Pagar.me
-            compra.status = 'Pago';
-        } else {
-            // Compra com valor — segue para pagamento
-            compra.status = 'Aguardando Pagamento';
+        // atualizando para aguardar pagamento
+        compra.status = 'Aguardando Pagamento'
+        await compra.save()
 
-            // Aqui você pode chamar a função que integra com a Pagar.me
-            // Exemplo fictício:
-            // await iniciarPagamentoPagarme(compra, user, itensCompra);
-        }
-
-        await compra.save();
-
-        res.status(200).json({ compra, itensCompra });
+        res.status(200).json({compra, itensCompra});
 
     } catch (error) {
-        console.log("Erro na rota de criar uma compra => ", error);
-        return res.status(500).json({ msg: "Erro na rota de criar uma compra => ", error });
+        console.log("Erro na rota de criar uma compra => ", error)
+        return res.status(500).json({ msg: "Erro na rota de criar uma compra => ", error })
     }
+
 }
 
 export async function validarIngresso(req, res) {
@@ -172,7 +166,7 @@ export async function listarIngressosComprados(req, res) {
         const userId = parseInt(usuario_id, 10); // Garante que é número
 
         const ingressos = await db.query(`
-            SELECT 
+            SELECT
                 c.compra_id,
                 c.data_compra,
                 c.valor_total,
@@ -208,10 +202,10 @@ export async function listarIngressosComprados(req, res) {
                 l.state
 
             FROM public."Compras" c
-            JOIN public."ItemCompras" ic ON ic.compra_id = c.compra_id
-            JOIN public."Ingressos" i ON i.ingresso_id = ic.ingresso_id
-            JOIN public.events e ON e.evento_id = i.evento_id
-            JOIN public."Local" l ON l.house_id = e.house_id
+                     JOIN public."ItemCompras" ic ON ic.compra_id = c.compra_id
+                     JOIN public."Ingressos" i ON i.ingresso_id = ic.ingresso_id
+                     JOIN public.events e ON e.evento_id = i.evento_id
+                     JOIN public."Local" l ON l.house_id = e.house_id
             WHERE c.usuario_id = :usuario_id
             ORDER BY c.data_compra DESC;
         `, {
@@ -233,7 +227,7 @@ export async function listarIngressosComprados(req, res) {
 
 export async function cancelarCompra(req,res) {
     try {
-        const {usuario_id, compra_id} = req.body 
+        const {usuario_id, compra_id} = req.body
         // Busca a compra
         const compra = await Compra.findByPk(compra_id);
         if(!compra){
@@ -263,7 +257,7 @@ export async function cancelarCompra(req,res) {
                 return res.status(400).json({msg: "Ingresso já foi usado.", item})
             }
 
-            ingresso.quantidade_vendida -= item.quantidade 
+            ingresso.quantidade_vendida -= item.quantidade
             await ingresso.save();
         }
 
@@ -291,7 +285,7 @@ export async function cancelarCompra(req,res) {
 export async function listarComprasPorData(req,res){
 
     try {
-        const {dataInicio, dataFim} = req.body 
+        const {dataInicio, dataFim} = req.body
 
         if(!dataInicio){
             return res.status(400).json({msg: "Informe a data inicial"})
@@ -299,24 +293,24 @@ export async function listarComprasPorData(req,res){
         if(!dataFim){
             return res.status(400).json({msg: "Informe a data final"})
         }
-    
+
         const dataInicialFormat = new Date(dataInicio)
         const dataFimFormat = new Date(dataFim)
-    
+
         const compras = await Compra.findAll({
             where: {
                 data_compra: {
                     [Op.between]: [dataInicialFormat, dataFimFormat]
                 }
             }
-            
+
         })
-    
+
         if(compras.length === 0){
             return res.status(400).json({msg: "Nenhuma compra encontrada!"})
         }
-    
-        return res.status(200).json(compras)        
+
+        return res.status(200).json(compras)
     } catch (error) {
         console.log("Erro na rota de listar compras por datas => ", error)
         return res.status(500).json({ msg: "Erro na rota de listar compras por datas => ", error })
