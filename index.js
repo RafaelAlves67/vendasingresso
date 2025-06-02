@@ -48,7 +48,7 @@ app.use('/graficos', RelatoriosRoute)
 
 
 // ativando servidor
-const port = 3000
+const port = 5432
 
 async function startServer() {
     try {
