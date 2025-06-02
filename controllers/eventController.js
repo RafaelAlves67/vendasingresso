@@ -442,6 +442,9 @@ export async function editDestaqueEvento(req,res){
     try {
         const {id} = req.params
         const evento_destaque = Event.findByPk(id) 
+        if(!evento_destaque){
+            return res.status(400).json({msg: "Nenhum evento encontado!"})
+        }
         evento_destaque.bl_destaque = true; 
         evento_destaque.save();
     return res.status(200).json({msg: "Evento destacado!", evento_destaque})    
