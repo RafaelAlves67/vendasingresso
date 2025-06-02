@@ -171,13 +171,11 @@ export async function getTotalArrecadado(req, res) {
     try {
         const { usuario_id, id_evento } = req.params;
 
-        // Trata id_evento para evitar filtro inválido
         const eventoIdValido =
             id_evento && id_evento !== "null" && id_evento !== "undefined" && id_evento !== ""
                 ? Number(id_evento)
                 : null;
 
-        // Busca apenas compras únicas, mesmo que tenham vários itens
         const compras = await Compra.findAll({
             include: [
                 {
@@ -214,15 +212,20 @@ export async function getTotalArrecadado(req, res) {
             where: {
                 status: 'Aprovada',
             },
-            attributes: ['id', 'valor_total'],
+            attributes: [['compra_id', 'id'], 'valor_total'],
             raw: true,
         });
 
-        // Soma apenas os valores únicos das compras
-        const totalArrecadado = compras.reduce(
-            (acc, compra) => acc + Number(compra.valor_total),
-            0
-        );
+        // Filtrar compras únicas por compra_id
+        const comprasUnicasMap = new Map();
+        for (const compra of compras) {
+            if (!comprasUnicasMap.has(compra.id)) {
+                comprasUnicasMap.set(compra.id, compra);
+            }
+        }
+
+        const totalArrecadado = Array.from(comprasUnicasMap.values())
+            .reduce((acc, compra) => acc + Number(compra.valor_total), 0);
 
         return res.status(200).json({ totalArrecadado });
 
