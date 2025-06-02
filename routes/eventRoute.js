@@ -9,19 +9,20 @@ import {
     getEventsByStatus,
     getEventById,
     getEventsByUser,
-    getEventDestaque
+    getEventDestaque,
+    editDestaqueEvento
 } from '../controllers/eventController.js';
 import { authToken } from '../helpers/authToken.js';
 import multer from 'multer';
 
 // Configurar o multer para aceitar o campo 'photos' como arquivo
 const upload = multer({
-    dest: 'uploads/', // O diretório onde você deseja salvar os arquivos
-}).single('photos'); // 'photos' é o nome do campo onde o arquivo será enviado
+    dest: 'uploads/', // O diretï¿½rio onde vocï¿½ deseja salvar os arquivos
+}).single('photos'); // 'photos' ï¿½ o nome do campo onde o arquivo serï¿½ enviado
 
 const eventRoute = express.Router();
 
-// Rota de registro de evento, onde você processa o formulário
+// Rota de registro de evento, onde vocï¿½ processa o formulï¿½rio
 eventRoute.post('/register', authToken, upload, registerEvent);
 eventRoute.put('/edit', authToken, upload, editEvent)
 eventRoute.delete('/delete/:id', authToken, deleteEvent)
@@ -32,5 +33,6 @@ eventRoute.get('/eventDestaque', getEventDestaque);
 eventRoute.get('/searchHouse/:id', authToken, getEventsByHouse)
 eventRoute.get('/eventUser/:id', authToken, getEventsByUser)
 eventRoute.get('/searchStats/:status', authToken, getEventsByStatus)
+eventRoute.patch('/editDestaque/:id', editDestaqueEvento)
 
 export default eventRoute

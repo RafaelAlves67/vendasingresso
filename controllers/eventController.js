@@ -436,3 +436,16 @@ export async function getEventDestaque(req, res) {
         return res.status(500).json({ msg: "Erro interno ao buscar eventos em destaque", error });
     }
 }
+
+export async function editDestaqueEvento(req,res){
+
+    try {
+        const {id} = req.params
+        const evento_destaque = Event.findByPk(id) 
+        evento_destaque.bl_destaque = true; 
+        evento_destaque.save();
+    return res.status(200).json({msg: "Evento destacado!", evento_destaque})    
+    } catch (error) {
+        return res.status(500).json({msg: "Erro na rota de editar destaque no evento => ", error})
+    }
+} 
