@@ -379,7 +379,8 @@ export async function getEventsByUser(req, res) {
             include: [
                 {
                     model: Producer,   // Associa o produtor ao evento
-                    as: 'producer',    // Alias utilizado no 'belongsTo' no modelo 'Event'
+                    as: 'producer',    // Alias utilizado no 'belongsTo' no modelo 'Event
+                    required: true,
                     include: {
                         model: Usuario, // Inclui os dados do usuário
                         as: 'usuario',  // Alias utilizado no 'belongsTo' no modelo 'Producer'
