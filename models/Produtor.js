@@ -13,7 +13,7 @@ const Produtor = db.define('Produtores', {
       allowNull: false,
     },
     description: {
-      type: DataTypes.STRING(255),
+      type: DataTypes.TEXT,
     },
 
     usuario_id:{
