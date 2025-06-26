@@ -11,7 +11,14 @@ const db_host = process.env.DB_HOST
 // criando conexão
 const db = new Sequelize(db_name, db_user, db_pass, {
     host: db_host,
-    dialect: 'postgres'
+    dialect: 'postgres',
+    dialectOptions: {
+    ssl: {
+      require: true,
+      rejectUnauthorized: false // Neon aceita conexões sem validação do certificado
+    }
+  },
+  logging: false
 })
 
 // conexão assincrona com banco
