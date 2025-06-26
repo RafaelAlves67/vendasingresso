@@ -10,23 +10,27 @@ export async function registerHouse(req,res){
 
         // validações
         if(!name){
-            return res.status(400).json({msg: "Insira o nome da casa!"})
+            return res.status(400).json({msg: "Insira o nome do local!"})
         }
 
         if(!address){
-            return res.status(400).json({msg: "Insira o endereço da casa!"})
+            return res.status(400).json({msg: "Insira o endereço do local!"})
         }
 
         if(!city){
-            return res.status(400).json({msg: "Insira a cidade da casa!"})
+            return res.status(400).json({msg: "Insira a cidade do local!"})
         }
 
         if(!state){
-            return res.status(400).json({msg: "Insira o estado da casa!"})
+            return res.status(400).json({msg: "Insira o estado do local!"})
         }
 
         if(!zip_code){
-            return res.status(400).json({msg: "Insira o CEP da casa!"})
+            return res.status(400).json({msg: "Insira o CEP do local!"})
+        }
+
+        if(!number){
+             return res.status(400).json({msg: "Insira o número do local!"})
         }
 
         // validar se existe casa ja no mesmo cep 
