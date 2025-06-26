@@ -64,5 +64,4 @@ async function startServer() {
     }
 }
 
-// Chamando a função
 startServer();
