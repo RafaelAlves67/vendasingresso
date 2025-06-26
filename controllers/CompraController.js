@@ -220,7 +220,7 @@ export async function listarIngressosComprados(req, res) {
         });
 
         if (!ingressos || ingressos.length === 0) {
-            return res.status(404).json({ msg: `Nenhum ingresso encontrado para o usuário ${usuario_id}` });
+            return res.status(404).json({ msg: `Nenhum ingresso encontrado` });
         }
 
         return res.status(200).json(ingressos);

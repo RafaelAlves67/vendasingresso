@@ -395,7 +395,7 @@ export async function getEventsByUser(req, res) {
         });
 
         if (!events || events.length === 0) {
-            return res.status(404).json({ msg: `Nenhum evento encontrado para o usuário ${user_id}` });
+            return res.status(404).json({ msg: `Nenhum evento encontrado` });
         }
 
         return res.status(200).json(events);
