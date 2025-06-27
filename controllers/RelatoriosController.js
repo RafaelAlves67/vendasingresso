@@ -620,58 +620,55 @@ export async function participantesPorMes(req, res) {
     try {
         const { usuario_id, id_evento } = req.params;
 
-        // Verifica se o produtor existe
         const produtor = await Produtor.findOne({ where: { usuario_id } });
         if (!produtor) {
             return res.status(400).json({ msg: "Produtor não encontrado!" });
         }
 
-        // Valida o ID do evento (opcional)
         const eventoIdValido = id_evento && id_evento !== "null" && id_evento !== "undefined" && id_evento !== ""
             ? Number(id_evento)
             : null;
 
-        // Monta a query com filtro condicional para id_evento
         const baseQuery = `
             WITH meses_do_ano AS (
                 SELECT
                     TO_CHAR(DATE_TRUNC('year', CURRENT_DATE) + (interval '1 month' * i), 'MM') AS mes,
                     TO_CHAR(DATE_TRUNC('year', CURRENT_DATE) + (interval '1 month' * i), 'Month') AS mes_nome
                 FROM generate_series(0, 11) AS i
-            )
+            ),
+                 participantes_por_evento AS (
+                     SELECT
+                         e.evento_id,
+                         TO_CHAR(e."dateStart", 'MM') AS mes,
+                         SUM(i.quantidade_vendida) AS total_participantes_evento
+                     FROM events e
+                              LEFT JOIN "Ingressos" i ON i.evento_id = e.evento_id
+                     WHERE EXTRACT(YEAR FROM e."dateStart") = EXTRACT(YEAR FROM CURRENT_DATE)
+                       AND e.produtor_id = :produtorId
+                ${eventoIdValido ? 'AND e.evento_id = :id_evento' : ''}
+            GROUP BY e.evento_id, TO_CHAR(e."dateStart", 'MM')
+                )
             SELECT
                 m.mes,
                 TRIM(m.mes_nome) AS nome_mes,
-                COALESCE(SUM(i.quantidade_vendida), 0) AS total_participantes
-            FROM
-                meses_do_ano m
-            LEFT JOIN events e ON
-                TO_CHAR(e."dateStart", 'MM') = m.mes
-                AND EXTRACT(YEAR FROM e."dateStart") = EXTRACT(YEAR FROM CURRENT_DATE)
-                AND e.produtor_id = :produtorId
-                ${eventoIdValido ? 'AND e.evento_id = :id_evento' : ''}
-            LEFT JOIN "Ingressos" i ON i.evento_id = e.evento_id
-            GROUP BY
-                m.mes, m.mes_nome
-            ORDER BY
-                m.mes;
+                COALESCE(SUM(p.total_participantes_evento), 0) AS total_participantes
+            FROM meses_do_ano m
+                     LEFT JOIN participantes_por_evento p ON p.mes = m.mes
+            GROUP BY m.mes, m.mes_nome
+            ORDER BY m.mes;
         `;
 
-        const replacements = {
-            produtorId: produtor.produtor_id,
-        };
+        const replacements = { produtorId: produtor.produtor_id };
         if (eventoIdValido) {
             replacements.id_evento = eventoIdValido;
         }
 
-        // Executa a query
         const result = await db.query(baseQuery, {
             replacements,
             type: db.QueryTypes.SELECT
         });
 
         return res.status(200).json(result);
-
     } catch (error) {
         return res.status(501).json({
             msg: "Erro na rota de participantes por mês =>",
