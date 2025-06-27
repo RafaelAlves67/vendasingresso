@@ -631,11 +631,8 @@ export async function participantesPorMes(req, res) {
             ? Number(id_evento)
             : null;
 
-        // Monta a cláusula WHERE para filtrar por evento (se necessário)
-        const eventoCondition = eventoIdValido ? `AND e.evento_id = :id_evento` : '';
-
-        // Executa a query SQL
-        const result = await db.query(`
+        // Monta a query com filtro condicional para id_evento
+        const baseQuery = `
             WITH meses_do_ano AS (
                 SELECT
                     TO_CHAR(DATE_TRUNC('year', CURRENT_DATE) + (interval '1 month' * i), 'MM') AS mes,
@@ -648,25 +645,33 @@ export async function participantesPorMes(req, res) {
                 COALESCE(SUM(i.quantidade_vendida), 0) AS total_participantes
             FROM
                 meses_do_ano m
-                    LEFT JOIN events e
-                              ON TO_CHAR(e."dateStart", 'MM') = m.mes
-                                  AND EXTRACT(YEAR FROM e."dateStart") = EXTRACT(YEAR FROM CURRENT_DATE)
-                                  AND e.produtor_id = :produtorId
-                ${eventoCondition}
+            LEFT JOIN events e ON
+                TO_CHAR(e."dateStart", 'MM') = m.mes
+                AND EXTRACT(YEAR FROM e."dateStart") = EXTRACT(YEAR FROM CURRENT_DATE)
+                AND e.produtor_id = :produtorId
+                ${eventoIdValido ? 'AND e.evento_id = :id_evento' : ''}
             LEFT JOIN "Ingressos" i ON i.evento_id = e.evento_id
             GROUP BY
                 m.mes, m.mes_nome
             ORDER BY
                 m.mes;
-        `, {
-            replacements: {
-                produtorId: produtor.produtor_id,
-                id_evento: eventoIdValido
-            },
+        `;
+
+        const replacements = {
+            produtorId: produtor.produtor_id,
+        };
+        if (eventoIdValido) {
+            replacements.id_evento = eventoIdValido;
+        }
+
+        // Executa a query
+        const result = await db.query(baseQuery, {
+            replacements,
             type: db.QueryTypes.SELECT
         });
 
         return res.status(200).json(result);
+
     } catch (error) {
         return res.status(501).json({
             msg: "Erro na rota de participantes por mês =>",
