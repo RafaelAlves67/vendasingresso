@@ -26,7 +26,7 @@ const eventRoute = express.Router();
 eventRoute.post('/register', authToken, upload, registerEvent);
 eventRoute.put('/edit', authToken, upload, editEvent)
 eventRoute.delete('/delete/:id', authToken, deleteEvent)
-eventRoute.get('/search/:name', authToken, getSearchEvent)
+eventRoute.get('/search/:name', getSearchEvent)
 eventRoute.get('/', getEventAll)
 eventRoute.get('/event/:id', getEventById);
 eventRoute.get('/eventDestaque', getEventDestaque);
