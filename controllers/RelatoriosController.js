@@ -620,38 +620,43 @@ export async function participantesPorMes(req, res) {
     try {
         const { usuario_id, id_evento } = req.params;
 
+        // Verifica se o produtor existe
         const produtor = await Produtor.findOne({ where: { usuario_id } });
         if (!produtor) {
             return res.status(400).json({ msg: "Produtor não encontrado!" });
         }
 
+        // Valida o ID do evento (opcional)
         const eventoIdValido = id_evento && id_evento !== "null" && id_evento !== "undefined" && id_evento !== ""
             ? Number(id_evento)
             : null;
 
+        // Monta a cláusula WHERE para filtrar por evento (se necessário)
         const eventoCondition = eventoIdValido ? `AND e.evento_id = :id_evento` : '';
 
+        // Executa a query SQL
         const result = await db.query(`
             WITH meses_do_ano AS (
-                SELECT 
+                SELECT
                     TO_CHAR(DATE_TRUNC('year', CURRENT_DATE) + (interval '1 month' * i), 'MM') AS mes,
                     TO_CHAR(DATE_TRUNC('year', CURRENT_DATE) + (interval '1 month' * i), 'Month') AS mes_nome
                 FROM generate_series(0, 11) AS i
             )
-            SELECT 
+            SELECT
                 m.mes,
                 TRIM(m.mes_nome) AS nome_mes,
                 COALESCE(SUM(i.quantidade_vendida), 0) AS total_participantes
-            FROM 
+            FROM
                 meses_do_ano m
-            LEFT JOIN events e ON TO_CHAR(e."dateStart", 'MM') = m.mes
-            INNER JOIN produtores p ON p.produtor_id = e.produtor_id AND p.usuario_id = :produtorId
+                    LEFT JOIN events e
+                              ON TO_CHAR(e."dateStart", 'MM') = m.mes
+                                  AND EXTRACT(YEAR FROM e."dateStart") = EXTRACT(YEAR FROM CURRENT_DATE)
+                                  AND e.produtor_id = :produtorId
+                ${eventoCondition}
             LEFT JOIN "Ingressos" i ON i.evento_id = e.evento_id
-            WHERE 1=1
-            ${eventoCondition}
-            GROUP BY 
+            GROUP BY
                 m.mes, m.mes_nome
-            ORDER BY 
+            ORDER BY
                 m.mes;
         `, {
             replacements: {
