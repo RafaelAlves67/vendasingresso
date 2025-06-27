@@ -134,24 +134,32 @@ export async function registerEvent(req, res) {
 
 export async function getSearchEvent(req, res) {
     try {
-        const name = req.params.name
+        const name = req.params.name;
 
-        const resultEvents = await Event.findAll({
-            where: {
-                name: {
-                    [Op.like]: `%${name}%`
+        let resultEvents;
+
+        if (!name || name === "null") {
+            // Busca todos os eventos
+            resultEvents = await Event.findAll();
+        } else {
+            // Busca com filtro de nome
+            resultEvents = await Event.findAll({
+                where: {
+                    name: {
+                        [Op.like]: `%${name}%`
+                    }
                 }
-            }
-        })
-
-        if (!resultEvents) {
-            return res.status(400).json({ msg: "Nenhum evento encontrado." })
+            });
         }
 
-        return res.status(200).json(resultEvents)
+        if (!resultEvents || resultEvents.length === 0) {
+            return res.status(400).json({ msg: "Nenhum evento encontrado." });
+        }
+
+        return res.status(200).json(resultEvents);
     } catch (error) {
-        console.log("Erro com a rota de pesquisa de eventos => ", error)
-        return res.status(500).json({ msg: "Erro com a rota de pesquisa de eventos => ", error })
+        console.log("Erro com a rota de pesquisa de eventos => ", error);
+        return res.status(500).json({ msg: "Erro com a rota de pesquisa de eventos => ", error });
     }
 }
 
